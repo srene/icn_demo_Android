@@ -134,7 +134,6 @@
     <orderEntry type="library" name="Gradle: android.arch.core:runtime-1.1.0" level="project" />
     <orderEntry type="library" name="Gradle: com.google.firebase:firebase-database-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:appcompat-v7-27.1.0" level="project" />
-    <orderEntry type="library" name="Gradle: org.jsoup:jsoup:1.9.2@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.exoplayer:exoplayer-dash-r2.5.4" level="project" />
     <orderEntry type="library" name="Gradle: com.google.firebase:firebase-database-connection-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-location-11.0.4" level="project" />
@@ -149,7 +148,6 @@
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-auth-base-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.exoplayer:exoplayer-smoothstreaming-r2.5.4" level="project" />
     <orderEntry type="library" name="Gradle: scout:scout:0.1.0@jar" level="project" />
-    <orderEntry type="library" name="Gradle: __local_aars__:/home/srene/workspace/icn_demo/Android/ndnocr/kbapp/libs/jndn-0.15.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-vision-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: android.arch.lifecycle:viewmodel-1.1.0" level="project" />
     <orderEntry type="library" name="Gradle: org.reactivestreams:reactive-streams:1.0.0@jar" level="project" />
@@ -157,7 +155,6 @@
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-tagmanager-v4-impl-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-wearable-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: frankiesardo:icepick-processor:3.2.0@jar" level="project" />
-    <orderEntry type="library" name="Gradle: org.mozilla:rhino:1.7.7.1@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:support-vector-drawable-27.1.0" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-wallet-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:support-annotations:27.1.0@jar" level="project" />
@@ -165,7 +162,6 @@
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-basement-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: org.clojure:core.cache:0.6.3@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-ads-lite-11.0.4" level="project" />
-    <orderEntry type="library" name="Gradle: com.grack:nanojson:1.1@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-analytics-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-identity-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: net.named-data.jndn-xx:jndn-xx-util:0.0.1@jar" level="project" />
@@ -188,6 +184,7 @@
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-safetynet-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-gass-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: joda-time:joda-time:2.7@jar" level="project" />
+    <orderEntry type="library" name="Gradle: __local_aars__:/home/srene/workspace/Android/ndnocr/app/libs/jndn-0.15.jar:unspecified@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:support-core-ui-27.1.0" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-analytics-impl-11.0.4" level="project" />
     <orderEntry type="library" name="Gradle: com.nononsenseapps:filepicker-3.0.1" level="project" />
@@ -204,7 +201,6 @@
     <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:1.7.12@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.guava:guava:18.0@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-instantapps-11.0.4" level="project" />
-    <orderEntry type="library" name="Gradle: com.github.TeamNewPipe:NewPipeExtractor:b9d0941@jar" level="project" />
     <orderEntry type="library" name="Gradle: frankiesardo:icepick:3.2.0@jar" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:palette-v7-25.2.0" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:animated-vector-drawable-27.1.0" level="project" />
@@ -233,7 +229,6 @@
     <orderEntry type="library" name="Gradle: android.arch.core:common:1.1.0@jar" level="project" />
     <orderEntry type="library" name="Gradle: android.arch.persistence.room:support-db-impl-1.0.0-alpha8" level="project" />
     <orderEntry type="library" name="Gradle: com.google.android.gms:play-services-tasks-11.0.4" level="project" />
-    <orderEntry type="module" module-name="kbapp" />
     <orderEntry type="library" name="Gradle: org.apache.http.legacy-android-26" level="project" />
   </component>
 </module>

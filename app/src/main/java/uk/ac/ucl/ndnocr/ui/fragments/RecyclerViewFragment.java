@@ -45,7 +45,7 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.List;
 
-import uk.ac.ucl.kbapp.utils.Config;
+import uk.ac.ucl.ndnocr.utils.Config;
 import uk.ac.ucl.ndnocr.R;
 import uk.ac.ucl.ndnocr.data.Content;
 import uk.ac.ucl.ndnocr.data.DatabaseHandler;

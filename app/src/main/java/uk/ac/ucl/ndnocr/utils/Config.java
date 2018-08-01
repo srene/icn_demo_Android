@@ -76,6 +76,11 @@ public class Config
 
 	public static final String passwd = "Raspberry";
 
-	public static final String SSID = "\"NDNOCR\"";
+	//public static final String SSID = "\"NDNOCR\"";
+
+	public static final String SSID = "NDNOCR";
+
+	public static final String GW_IP ="192.168.49.1";
+
 
 } // Config

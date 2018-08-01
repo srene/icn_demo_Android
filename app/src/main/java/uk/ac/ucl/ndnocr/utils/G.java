@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import uk.ac.ucl.kbapp.net.wifi.WifiLink;
+import uk.ac.ucl.ndnocr.net.wifi.WifiLink;
 
 /**
  * Global class used for logging

@@ -1,10 +1,10 @@
 package uk.ac.ucl.ndnocr.data;
 
 import android.app.ActivityManager;
-import android.app.Fragment;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -12,23 +12,43 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Message;
+import android.os.Messenger;
 import android.os.PowerManager;
+import android.os.RemoteException;
 import android.widget.Toast;
 
-import uk.ac.ucl.kbapp.KebappService;
-import uk.ac.ucl.kbapp.net.Link;
-import uk.ac.ucl.kbapp.utils.MyNfdc;
+import com.intel.jndn.management.types.ForwarderStatus;
+
+
+import uk.ac.ucl.ndnocr.net.Discovery;
+import uk.ac.ucl.ndnocr.net.Link;
+import uk.ac.ucl.ndnocr.net.LinkListener;
+import uk.ac.ucl.ndnocr.net.wifi.WifiLinkListener;
+import uk.ac.ucl.ndnocr.utils.DispatchQueue;
+import uk.ac.ucl.ndnocr.utils.MyNfdc;
 import uk.ac.ucl.ndnocr.MainActivity;
 import uk.ac.ucl.ndnocr.R;
+import uk.ac.ucl.ndnocr.net.wifi.WifiLink;
+import uk.ac.ucl.ndnocr.net.wifi.WifiServiceDiscovery;
 import uk.ac.ucl.ndnocr.utils.Config;
-import uk.ac.ucl.kbapp.utils.G;
+import uk.ac.ucl.ndnocr.utils.G;
 
+import net.grandcentrix.tray.AppPreferences;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.InterestFilter;
 import net.named_data.jndn.Name;
+import net.named_data.jndn.OnData;
+import net.named_data.jndn.OnInterestCallback;
+import net.named_data.jndn.OnRegisterFailed;
+import net.named_data.jndn.OnTimeout;
 import net.named_data.jndn.security.KeyChain;
+import net.named_data.jndn.security.SecurityException;
+import net.named_data.jndn.security.identity.IdentityManager;
+import net.named_data.jndn.security.identity.MemoryIdentityStorage;
+import net.named_data.jndn.security.identity.MemoryPrivateKeyStorage;
 import net.named_data.jndn.util.Blob;
 
 import java.io.File;
@@ -36,29 +56,234 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import static java.lang.Thread.sleep;
 
-public class NdnOcrService extends KebappService {
+public class NdnOcrService extends Service implements OnInterestCallback, OnRegisterFailed, OnData, OnTimeout, LinkListener, WifiLinkListener {
 
     private PowerManager mPowerManager;
     private PowerManager.WakeLock mWakeLock;
     private DatabaseHandler db;
 
+    /** debug tag */
+    public static final String TAG = "NdnOcrService";
+
+    //Service type advertised in WiFi Direct
+    //public static final String SERVICE_INSTANCE = ".ndnocr";
+    //public static final String SERVICE_TYPE = ".ndnocr._tcp";
+
+    public NdnOcrService that = this;
+
+    public static final int CHECK_SERVICE = 0;
+    /** Message to start Service */
+    public static final int START_SERVICE = 1;
+    /** Message to stop Service */
+    public static final int STOP_SERVICE = 2;
+    /** Message to indicate that Service is running */
+    public static final int SERVICE_RUNNING = 3;
+    /** Message to indicate that Service is not running */
+    public static final int SERVICE_STOPPED = 4;
+    /** Message to indicate that WifiDirect is connected */
+    public static final int SERVICE_WIFI_CONNECTED = 5;
+
+    //Connectivity classes
+    Link mWifiLink = null;
+    Discovery mWifiServiceDiscovery = null;
+    DispatchQueue queue;
+
+    //While true NDN face is processing events
+    public boolean shouldStop=true;
+    public int retry=0;
+    public int nfdRetry=0;
+
+    /** Messenger to handle messages that are passed to the NfdService */
+    protected Messenger m_serviceMessenger = null;
+
+    /** Flag that denotes if the NFD has been started */
+    private boolean m_isServiceStarted = false;
+    private boolean m_isConnected = false;
+
+    private int id;
+    private int pendingInterests;
+    private Handler m_handler;
+    private Runnable m_statusUpdateRunnable;
+
+    public int faceId;
+
+    protected List<String> init = new ArrayList<>();
+
+    boolean shouldConnect=false;
+
+    //Loading JNI libraries used to run NFD
+    static {
+        System.loadLibrary("crystax");
+        System.loadLibrary("gnustl_shared");
+        System.loadLibrary("cryptopp_shared");
+        System.loadLibrary("boost_system");
+        System.loadLibrary("boost_filesystem");
+        System.loadLibrary("boost_date_time");
+        System.loadLibrary("boost_iostreams");
+        System.loadLibrary("boost_program_options");
+        System.loadLibrary("boost_chrono");
+        System.loadLibrary("boost_random");
+        System.loadLibrary("ndn-cxx");
+        System.loadLibrary("boost_thread");
+        System.loadLibrary("nfd-daemon");
+        System.loadLibrary("nfd-wrapper");
+    }
+    /**
+     * Native API for starting the NFD.
+     *
+     * @param params NFD parameters.  Must include 'homePath' with absolute path of the home directory
+     *               for the service (ContextWrapper.getFilesDir().getAbsolutePath())
+     */
+    public native static void
+    startNfd(Map<String, String> params);
+
+    /**
+     * Native API for stopping the NFD.
+     */
+    public native static void
+    stopNfd();
+
+    public native static List<String>
+    getNfdLogModules();
+
+    public native static boolean
+    isNfdRunning();
+
     public static final String NEW_RESULT = "action_download";
+
     @Override
     public void onCreate(){
         super.onCreate();
+
         db = new DatabaseHandler(this);
+
+        m_serviceMessenger = new Messenger(new ServiceMessageHandler());
+        this.queue = new DispatchQueue();
+        mWifiServiceDiscovery = new WifiServiceDiscovery(this, this);//, stats););
+        mWifiLink = new WifiLink(this);
+        m_handler = new Handler();
+
+        m_statusUpdateRunnable = new Runnable() {
+            @Override
+            public void run()
+            {
+                new StatusUpdateTask().execute();
+            }
+        };
 
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Notification notification = new Notification.Builder(this).getNotification();
+        AppPreferences appPreferences = new AppPreferences(getApplicationContext());
+        startForeground(1000,notification);
+        serviceStart();
+        return START_STICKY;
+    }
+    @Override
+    public void onDestroy() {
 
-        return super.onStartCommand(intent,flags,startId);
+        G.Log(TAG,"KebappService::onDestroy()");
+        serviceStop();
+        stopSelf();
+        m_serviceMessenger = null;
+        super.onDestroy();
+
+    }
+
+    /////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Thread safe way of starting the service and updating the
+     * started flag.
+     */
+    private synchronized void
+    serviceStart() {
+
+        if (!m_isServiceStarted) {
+            m_isServiceStarted = true;
+            G.Log(TAG,"Started");
+            faceId=0;
+            HashMap<String, String> params = new HashMap<>();
+            params.put("homePath", getFilesDir().getAbsolutePath());
+            Set<Map.Entry<String,String>> e = params.entrySet();
+
+            startNfd(params);
+
+            // Example how to retrieve all available NFD log modules
+            List<String> modules = getNfdLogModules();
+            for (String module : modules) {
+                G.Log(module);
+            }
+
+            m_handler.postDelayed(m_statusUpdateRunnable, 50);
+
+            G.Log(TAG, "serviceStart()");
+        } else {
+            G.Log(TAG, "serviceStart(): UbiCDN Service already running!");
+        }
+    }
+
+    /**
+     * Thread safe way of stopping the service and updating the
+     * started flag.
+     */
+    private synchronized void
+    serviceStop() {
+        if (m_isServiceStarted) {
+            m_isServiceStarted = false;
+            // TODO: Save NFD and NRD in memory data structures.
+            stopNfd();
+            mWifiLink.disconnect();
+            mWifiServiceDiscovery.stop();
+            m_handler.removeCallbacks(m_statusUpdateRunnable);
+            G.Log(TAG, "serviceStop()");
+        }
+    }
+    protected void setConnect(boolean connect){
+        shouldConnect=connect;
+    }
+
+    private void initService()
+    {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    G.Log(TAG, "Init service thread");
+
+                    final Face mFace = new Face("localhost");
+                    KeyChain keyChain = buildTestKeyChain();
+                    mFace.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
+                    mWifiServiceDiscovery.start(false,id);
+
+                    while (m_isServiceStarted) {
+                        mFace.processEvents();
+                    }
+
+
+                } catch (Exception ex) {
+                    G.Log(TAG, ex.toString());
+                }
+            }
+        }).start();
+
     }
 
     @Override
@@ -94,7 +319,15 @@ public class NdnOcrService extends KebappService {
                 sendToast("Link "+separated[0]+" discovered but no content to process");
             }
         }
-        super.linkNetworkDiscovered(link,network);
+
+        if(!separated[0].equals("")&&!separated[1].equals("")&&shouldConnect) {
+            shouldConnect=false;
+            G.Log(TAG,"StartConnection");
+            mWifiServiceDiscovery.stop();
+            //turnOnScreen();
+            mWifiLink.connect(separated[0], separated[1]);
+
+        }
     }
 
     @Override
@@ -102,9 +335,54 @@ public class NdnOcrService extends KebappService {
 
         G.Log(TAG, "Wifi Link connected "+network+" "+Config.SSID);
         if(db.getPendingCount()>0){
-            createFaceandSend(uk.ac.ucl.kbapp.utils.Config.GW_IP, uk.ac.ucl.kbapp.utils.Config.prefix);
+            pendingInterests=0;
+            createFaceandSend(Config.GW_IP, Config.prefix);
         }
-        super.wifiLinkConnected(link,network);
+        if(!m_isConnected) {
+            m_isConnected = true;
+        }
+    }
+
+    @Override
+    public void wifiLinkDisconnected(Link link)
+    {
+        G.Log(TAG,"wifiLinkDisconnected");
+        m_isConnected = false;
+
+        try {
+            MyNfdc nfdc = new MyNfdc();
+            if(faceId!=0){
+                nfdc.ribUnregisterPrefix(new Name("/ubicdn/video/"), faceId);
+                nfdc.faceDestroy(faceId);
+            }
+            faceId=0;
+            nfdc.shutdown();
+        }catch (Exception e){}
+        if(m_isServiceStarted) {
+            mWifiServiceDiscovery.start(false, id);
+        }
+        //serviceStop();
+        //serviceStart();
+    } // btLinkDisconnected()
+
+    public void disconnect(){
+
+        G.Log(TAG,"Just disconnect");
+        serviceStop();
+        serviceStart();
+    }
+
+    @Override
+    public void linkConnected(Link link)
+    {
+        G.Log(TAG,"btLinkConnected");
+
+    }
+
+    @Override
+    public void linkDisconnected(Link link)
+    {
+        G.Log(TAG,"btLinkDisconnected");
     }
 
     public void onInterest(Name name, Interest interest, Face face, long l, InterestFilter filter) {
@@ -170,14 +448,24 @@ public class NdnOcrService extends KebappService {
             e.printStackTrace();
         }
         db.setContentText(data.getName().get(3).toEscapedString(),data.getContent().toString());
+        db.setContentDownloaded(data.getName().get(3).toEscapedString());
+        pendingInterests--;
         Intent broadcast = new Intent(NEW_RESULT);
         sendBroadcast(broadcast);
+        if(pendingInterests==0)disconnect();
 
     }
 
     public void onTimeout(Interest interest){
         G.Log(TAG,"Timeout for interest "+interest.getName());
+        pendingInterests--;
     }
+
+    public void onRegisterFailed(Name name){
+        G.Log(TAG, "Failed to register the data");
+
+    }
+
     public void sendToast(final String msg)
     {
         // prepare intent which is triggered if the
@@ -248,7 +536,7 @@ public class NdnOcrService extends KebappService {
                     faceId = nfdc.faceCreate("tcp://"+IP);
 
                     G.Log(TAG,"Register prefix "+uri);
-                    nfdc.ribRegisterPrefix(new Name("/exec"+uk.ac.ucl.kbapp.utils.Config.prefix), faceId, 0, true, false);
+                    nfdc.ribRegisterPrefix(new Name("/exec"+Config.prefix), faceId, 0, true, false);
                     nfdc.shutdown();
 
                     KeyChain keyChain = buildTestKeyChain();
@@ -264,8 +552,9 @@ public class NdnOcrService extends KebappService {
                         mFace.registerPrefix(new Name(localName), that, that);
                         Interest interest = new Interest(requestName);
                         sleep(Config.createFaceWaitingTime);
-                        interest.setInterestLifetimeMilliseconds(uk.ac.ucl.kbapp.utils.Config.interestLifeTime);
+                        interest.setInterestLifetimeMilliseconds(Config.interestLifeTime);
                         mFace.expressInterest(interest, that, that);
+                        pendingInterests++;
                     }
                     shouldStop=false;
                     retry=0;
@@ -274,7 +563,7 @@ public class NdnOcrService extends KebappService {
                     }
                     mFace.shutdown();
                 } catch (Exception e) {
-                    if(retry< uk.ac.ucl.kbapp.utils.Config.maxRetry) {
+                    if(retry< Config.maxRetry) {
                         createFaceandSend(IP, uri);
                     }else {
                         //mWifiLink.disconnect();
@@ -310,6 +599,154 @@ public class NdnOcrService extends KebappService {
                 }
             }
             return false;
+        }
+    }
+
+    public String getLocalIPAddress() {
+        try {
+            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+                NetworkInterface intf = en.nextElement();
+                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+                    InetAddress inetAddress = enumIpAddr.nextElement();
+                    if (!inetAddress.isLoopbackAddress()) {
+                        if (inetAddress instanceof Inet4Address) { // fix for Galaxy Nexus. IPv4 is easy to use :-)
+                            //G.Log(TAG,"IP address "+getDottedDecimalIP(inetAddress.getAddress()));
+                            if(getDottedDecimalIP(inetAddress.getAddress()).startsWith("192.168."))
+                                return getDottedDecimalIP(inetAddress.getAddress());
+                        }
+                        //return inetAddress.getHostAddress().toString(); // Galaxy Nexus returns IPv6
+                    }
+                }
+            }
+        } catch (SocketException ex) {
+            //Log.e("AndroidNetworkAddressFactory", "getLocalIPAddress()", ex);
+        } catch (NullPointerException ex) {
+            //Log.e("AndroidNetworkAddressFactory", "getLocalIPAddress()", ex);
+        }
+        return null;
+    }
+
+
+    private String getDottedDecimalIP(byte[] ipAddr) {
+        //convert to dotted decimal notation:
+        String ipAddrStr = "";
+        for (int i=0; i<ipAddr.length; i++) {
+            if (i > 0) {
+                ipAddrStr += ".";
+            }
+            ipAddrStr += ipAddr[i]&0xFF;
+        }
+        return ipAddrStr;
+    }
+
+
+    private String getOwnerAddress() {
+        return "192.168.49.1";
+    }
+
+
+    public static KeyChain buildTestKeyChain() throws SecurityException {
+        MemoryIdentityStorage identityStorage = new MemoryIdentityStorage();
+        MemoryPrivateKeyStorage privateKeyStorage = new MemoryPrivateKeyStorage();
+        IdentityManager identityManager = new IdentityManager(identityStorage, privateKeyStorage);
+        KeyChain keyChain = new KeyChain(identityManager);
+        try {
+            keyChain.getDefaultCertificateName();
+        } catch (SecurityException e) {
+            keyChain.createIdentity(new Name("/test/identity"));
+            keyChain.getIdentityManager().setDefaultIdentity(new Name("/test/identity"));
+        }
+        return keyChain;
+    }
+
+    /**
+     * Message handler for the the ubiCDN Service.
+     */
+    private class ServiceMessageHandler extends Handler {
+
+        @Override
+        public void handleMessage(Message message) {
+            switch (message.what) {
+                case NdnOcrService.START_SERVICE:
+                    G.Log(TAG,"Non source start service");
+                    //source=false;
+                    serviceStart();
+                    replyToClient(message, NdnOcrService.SERVICE_RUNNING);
+                    break;
+
+                case NdnOcrService.CHECK_SERVICE:
+                    if(m_isServiceStarted)
+                        replyToClient(message, NdnOcrService.SERVICE_RUNNING);
+                    else
+                        replyToClient(message, NdnOcrService.SERVICE_STOPPED);
+                    break;
+                case NdnOcrService.STOP_SERVICE:
+                    G.Log(TAG,"Non source stop service");
+                    serviceStop();
+                    stopForeground(true);
+                    stopSelf();
+                    replyToClient(message, NdnOcrService.SERVICE_STOPPED);
+                    break;
+
+                case NdnOcrService.SERVICE_WIFI_CONNECTED:
+                    G.Log(TAG,"Wifi connection completed");
+                    // createFaceandSend();
+                    break;
+
+                default:
+                    super.handleMessage(message);
+                    break;
+            }
+        }
+
+        private void
+        replyToClient(Message message, int replyMessage) {
+            try {
+                message.replyTo.send(Message.obtain(null, replyMessage));
+            } catch (RemoteException e) {
+                // Nothing to do here; It means that client end has been terminated.
+            }
+        }
+    }
+
+    private class StatusUpdateTask extends AsyncTask<Void, Void, ForwarderStatus> {
+        /**
+         * @param voids
+         * @return ForwarderStatus if operation succeeded, null if operation failed
+         */
+        @Override
+        protected ForwarderStatus
+        doInBackground(Void... voids)
+        {
+            try {
+                MyNfdc nfdcHelper = new MyNfdc();
+                ForwarderStatus fs = nfdcHelper.generalStatus();
+                nfdcHelper.shutdown();
+                return fs;
+            }
+            catch (Exception e) {
+                nfdRetry++;
+                G.Log(TAG,"Error communicating with NFD (" + e.getMessage() + ")");
+                if(nfdRetry> Config.nfdMaxRetry){
+                    serviceStop();
+                    serviceStart();
+                }
+                return null;
+            }
+        }
+
+        @Override
+        protected void
+        onPostExecute(ForwarderStatus fs)
+        {
+            if (fs == null) {
+                // when failed, try after 0.5 seconds
+                m_handler.postDelayed(m_statusUpdateRunnable, 50);
+            }
+            else {
+                // refresh after 5 seconds
+                initService();
+            }
         }
     }
 }

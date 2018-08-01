@@ -22,7 +22,7 @@ import com.intel.jndn.management.types.FaceStatus;
 import com.intel.jndn.management.types.RibEntry;
 
 //import uk.ac.ucl.ndnocr.backend.VideoListService;
-import uk.ac.ucl.kbapp.KebappService;
+import uk.ac.ucl.ndnocr.data.NdnOcrService;
 import uk.ac.ucl.ndnocr.ui.fragments.Camera2BasicFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.FaceListFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.FaceStatusFragment;

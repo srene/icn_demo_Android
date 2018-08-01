@@ -73,7 +73,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import uk.ac.ucl.kbapp.utils.Config;
+import uk.ac.ucl.ndnocr.utils.Config;
 import uk.ac.ucl.ndnocr.R;
 import uk.ac.ucl.ndnocr.data.Content;
 import uk.ac.ucl.ndnocr.data.DatabaseHandler;
