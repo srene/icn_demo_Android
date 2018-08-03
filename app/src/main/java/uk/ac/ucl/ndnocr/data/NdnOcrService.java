@@ -255,9 +255,9 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             G.Log(TAG, "serviceStop()");
         }
     }
-    protected void setConnect(boolean connect){
+    /*protected void setConnect(boolean connect){
         shouldConnect=connect;
-    }
+    }*/
 
     private void initService()
     {
@@ -308,26 +308,27 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     public void linkNetworkDiscovered(Link link, String network)
     {
 
-        G.Log(TAG, "Frame received " + network+" "+db.getContentDownloaded().size());
         String[] separated = network.split(":");
+        G.Log(TAG, "Frame received " + network+" "+db.getContentDownloaded().size()+" "+db.getPendingCount()+" "+separated.length);
 
         if(separated.length<=3) {
             if(db.getPendingCount()>0){
-                setConnect(true);
-                sendToast("Content to process on link "+separated[0]);
+             //   setConnect(true);
+                sendToast("Sending images to process to link "+separated[0]);
+                if(!separated[0].equals("")&&!separated[1].equals("")) {
+                    //shouldConnect=false;
+                    G.Log(TAG,"StartConnection");
+                    mWifiServiceDiscovery.stop();
+                    //turnOnScreen();
+                    mWifiLink.connect(separated[0], separated[1]);
+
+                }
             }else {
-                sendToast("Link "+separated[0]+" discovered but no content to process");
+                sendToast("Link "+separated[0]+" discovered but no images to process");
             }
         }
 
-        if(!separated[0].equals("")&&!separated[1].equals("")&&shouldConnect) {
-            shouldConnect=false;
-            G.Log(TAG,"StartConnection");
-            mWifiServiceDiscovery.stop();
-            //turnOnScreen();
-            mWifiLink.connect(separated[0], separated[1]);
 
-        }
     }
 
     @Override
@@ -400,7 +401,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             for (File file : subFiles) {
                 G.Log("Filename " + file.getAbsolutePath() + " " + file.getName() + " " + file.length());
             }
-            String filename = interest.getName().get(1).toEscapedString();
+            String filename = interest.getName().get(2).toEscapedString();
             File f = new File(getFilesDir() + "/" + filename);
             InputStream fis = new FileInputStream(f);
             bytes = new byte[(int) f.length()];
@@ -448,7 +449,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             e.printStackTrace();
         }
         db.setContentText(data.getName().get(3).toEscapedString(),data.getContent().toString());
-        db.setContentDownloaded(data.getName().get(3).toEscapedString());
+        db.setContentDownloaded(Config.prefix+data.getName().get(3).toEscapedString());
         pendingInterests--;
         Intent broadcast = new Intent(NEW_RESULT);
         sendBroadcast(broadcast);
@@ -459,6 +460,8 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     public void onTimeout(Interest interest){
         G.Log(TAG,"Timeout for interest "+interest.getName());
         pendingInterests--;
+        if(pendingInterests==0)disconnect();
+
     }
 
     public void onRegisterFailed(Name name){
@@ -536,7 +539,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     faceId = nfdc.faceCreate("tcp://"+IP);
 
                     G.Log(TAG,"Register prefix "+uri);
-                    nfdc.ribRegisterPrefix(new Name("/exec"+Config.prefix), faceId, 0, true, false);
+                    nfdc.ribRegisterPrefix(new Name(Config.prefix), faceId, 0, true, false);
                     nfdc.shutdown();
 
                     KeyChain keyChain = buildTestKeyChain();
@@ -545,10 +548,10 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
                     mFace.registerPrefix(new Name("/"+getLocalIPAddress()+"/result"), that, that);
                     for(String cont : db.getPendingContent()) {
-                        G.Log(TAG,"send interest /exec"+Config.prefix+cont);
+                        G.Log(TAG,"send interest "+Config.prefix+cont);
 
-                        final Name requestName = new Name("/exec"+Config.prefix+getLocalIPAddress()+"/"+cont);
-                        final Name localName = new Name("/"+getLocalIPAddress()+"/"+cont);
+                        final Name requestName = new Name(Config.prefix+getLocalIPAddress()+"/"+cont);
+                        final Name localName = new Name("/pic/"+getLocalIPAddress()+"/"+cont);
                         mFace.registerPrefix(new Name(localName), that, that);
                         Interest interest = new Interest(requestName);
                         sleep(Config.createFaceWaitingTime);

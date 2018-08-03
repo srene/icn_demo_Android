@@ -80,6 +80,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         if(val>0) return false;
         ContentValues values = new ContentValues();
         values.put(KEY_URI, content.getUri());
+        G.Log("Data added "+content.getUri());
         values.put(KEY_NAME, content.getName()); // Contact Name
         values.put(KEY_DESC, content.getText()); // Contact Phone
         values.put(KEY_URL, content.getUrl()); // Contact Phone
@@ -112,6 +113,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     }
     public int setContentDownloaded(String uri)
     {
+        G.Log("Data added "+uri);
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
 

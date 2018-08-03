@@ -22,7 +22,7 @@ public class Config
 
 	public static final int frameSizeMax = 50 * 1024 * 1024;
 
-	public static final String prefix ="/OCR/";
+	public static final String prefix ="/exec/OCR/";
 	public static final String video ="video";
 	public static final String text ="Emergency video for the ndnocr demo";
 
