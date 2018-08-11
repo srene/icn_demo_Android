@@ -33,6 +33,7 @@ import uk.ac.ucl.ndnocr.net.wifi.WifiLink;
 import uk.ac.ucl.ndnocr.net.wifi.WifiServiceDiscovery;
 import uk.ac.ucl.ndnocr.utils.Config;
 import uk.ac.ucl.ndnocr.utils.G;
+import uk.ac.ucl.ndnocr.utils.TimersPreferences;
 
 import net.grandcentrix.tray.AppPreferences;
 import net.named_data.jndn.Data;
@@ -125,6 +126,9 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
     boolean shouldConnect=false;
 
+    TimersPreferences timers;
+
+
     //Loading JNI libraries used to run NFD
     static {
         System.loadLibrary("crystax");
@@ -171,9 +175,11 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
         db = new DatabaseHandler(this);
 
+        timers = new TimersPreferences(this);
+
         m_serviceMessenger = new Messenger(new ServiceMessageHandler());
         this.queue = new DispatchQueue();
-        mWifiServiceDiscovery = new WifiServiceDiscovery(this, this);//, stats););
+        mWifiServiceDiscovery = new WifiServiceDiscovery(this, this,timers);//, stats););
         mWifiLink = new WifiLink(this);
         m_handler = new Handler();
 
@@ -224,6 +230,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             Set<Map.Entry<String,String>> e = params.entrySet();
 
             startNfd(params);
+            G.Log(TAG,"onCreate timers "+timers.getWifiScanTime()+" "+timers.getInterestLifeTime()+" "+timers.getWifiWaitingTime());
 
             // Example how to retrieve all available NFD log modules
             List<String> modules = getNfdLogModules();
@@ -555,7 +562,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                         mFace.registerPrefix(new Name(localName), that, that);
                         Interest interest = new Interest(requestName);
                         sleep(Config.createFaceWaitingTime);
-                        interest.setInterestLifetimeMilliseconds(Config.interestLifeTime);
+                        interest.setInterestLifetimeMilliseconds(timers.getInterestLifeTime());
                         mFace.expressInterest(interest, that, that);
                         pendingInterests++;
                     }

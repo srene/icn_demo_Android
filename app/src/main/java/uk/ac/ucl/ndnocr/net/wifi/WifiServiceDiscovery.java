@@ -22,6 +22,7 @@ import uk.ac.ucl.ndnocr.net.Link;
 import uk.ac.ucl.ndnocr.net.LinkListener;
 import uk.ac.ucl.ndnocr.utils.Config;
 import uk.ac.ucl.ndnocr.utils.G;
+import uk.ac.ucl.ndnocr.utils.TimersPreferences;
 
 
 /**
@@ -45,7 +46,9 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
     boolean isRunning;
 
     private Handler mServiceBroadcastingHandler;
-    public static final long SERVICE_BROADCASTING_INTERVAL = 10000;
+
+    TimersPreferences timers;
+   // public static final long SERVICE_BROADCASTING_INTERVAL = 10000;
 
 
     enum ServiceState{
@@ -55,9 +58,10 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
     }
     ServiceState myServiceState = ServiceState.NONE;
 
-    public WifiServiceDiscovery(Context Context, LinkListener listener) {
+    public WifiServiceDiscovery(Context Context, LinkListener listener, TimersPreferences timers) {
         this.context = Context;
         this.listener = listener;
+        this.timers = timers;
         apManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
         mServiceBroadcastingHandler = new Handler();
 
@@ -83,7 +87,7 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
                 this.context.registerReceiver(receiver, filter);
 
                 apManager.startScan();
-                mServiceBroadcastingHandler.postDelayed(mServiceBroadcastingRunnable, SERVICE_BROADCASTING_INTERVAL);
+                mServiceBroadcastingHandler.postDelayed(mServiceBroadcastingRunnable, timers.getWifiScanTime());
             }
         } else {
             G.Log(TAG,"Service already running");
@@ -195,7 +199,7 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
         for(ScanResult r : res)
             Log.d(TAG,"result "+r.SSID);*/
             mServiceBroadcastingHandler
-                    .postDelayed(mServiceBroadcastingRunnable, SERVICE_BROADCASTING_INTERVAL);
+                    .postDelayed(mServiceBroadcastingRunnable, timers.getWifiScanTime());
         }
     };
 

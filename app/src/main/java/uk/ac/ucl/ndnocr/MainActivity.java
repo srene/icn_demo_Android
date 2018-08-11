@@ -32,6 +32,7 @@ import uk.ac.ucl.ndnocr.ui.fragments.RecyclerViewFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.RouteInfoFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.RouteListFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.DrawerFragment;
+import uk.ac.ucl.ndnocr.ui.fragments.SettingsFragment;
 import uk.ac.ucl.ndnocr.utils.G;
 
 import java.util.ArrayList;
@@ -138,8 +139,8 @@ public class MainActivity extends AppCompatActivity
                                              DRAWER_ITEM_GENERAL));
       //items.add(new DrawerFragment.DrawerItem(R.string.drawer_item_service, 0,
       //                                       DRAWER_ITEM_NFD));
-      //items.add(new DrawerFragment.DrawerItem(R.string.drawer_item_settings, 0,
-      //                                       DRAWER_ITEM_SETTINGS));
+      items.add(new DrawerFragment.DrawerItem(R.string.drawer_item_settings, 0,
+                                             DRAWER_ITEM_SETTINGS));
       items.add(new DrawerFragment.DrawerItem(R.string.drawer_item_faces, 0,
                                               DRAWER_ITEM_FACES));
       items.add(new DrawerFragment.DrawerItem(R.string.drawer_item_routes, 0,
@@ -313,9 +314,9 @@ public class MainActivity extends AppCompatActivity
         case DRAWER_ITEM_LOGCAT:
           fragment = LogcatFragment.newInstance();
           break;
-       /* case DRAWER_ITEM_SETTINGS:
+        case DRAWER_ITEM_SETTINGS:
           fragment = SettingsFragment.newInstance();
-          break;*/
+          break;
         default:
           // Invalid; Nothing else needs to be done
           return;

@@ -49,9 +49,8 @@
         <item>UdpFactory:V</item>
     </string-array>-->
     <string-array name="default_log_tags_and_levels">
-        <item>UbiCDNService:V</item>
-        <item>WifiDirectHotSpot:V</item>
-        <item>WifiDirectServiceDiscovery:V</item>
+        <item>NdnOcrService:V</item>
+        <item>WifiServiceDiscovery:V</item>
         <item>WifiLink:V</item>
     </string-array>
 </resources>

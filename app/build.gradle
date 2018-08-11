@@ -24,8 +24,8 @@ android {
         applicationId "uk.ac.ucl.ndnocr"
         minSdkVersion 23
         targetSdkVersion 26
-        versionCode 1
-        versionName "1.0"
+        versionCode 212
+        versionName "2.1"
         multiDexEnabled true
 
         javaCompileOptions {

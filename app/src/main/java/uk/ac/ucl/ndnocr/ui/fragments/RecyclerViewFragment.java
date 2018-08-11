@@ -28,10 +28,15 @@ import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -118,6 +123,7 @@ public class RecyclerViewFragment extends Fragment {
     @Override
     public void onResume(){
         getContext().registerReceiver(mBroadcastReceiver, new IntentFilter(NdnOcrService.NEW_RESULT));
+        setHasOptionsMenu(true);
         super.onResume();
     }
 
@@ -128,7 +134,69 @@ public class RecyclerViewFragment extends Fragment {
         super.onPause();
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        G.Log(TAG,"onCreateOptionsmenu");
+        super.onCreateOptionsMenu(menu, inflater);
+        ActionBar supportActionBar = ((AppCompatActivity)getContext()).getSupportActionBar();
 
+        //   defaultPreferences = PreferenceManager.getDefaultSharedPreferences(activity);
+
+        inflater.inflate(R.menu.video_detail_menu, menu);
+        if (supportActionBar != null ) {
+            supportActionBar.setDisplayHomeAsUpEnabled(false);
+        }
+       // this.menu = menu;
+    }
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_clear:
+                deleteVideos();
+                return true;
+           /* case R.id.menu_item_act_malicious:
+                activateMalicious();
+                return true;
+            case R.id.menu_item_deact_malicious:
+                deActivateMalicious();
+                return true;*/
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void deleteVideos()
+    {
+        File dir = getContext().getFilesDir();
+        File[] subFiles = dir.listFiles();
+        G.Log(TAG,"Files " +subFiles.length);
+
+        DatabaseHandler db = new DatabaseHandler(getActivity());
+        List<Content> content = db.getContent();
+
+        for (Content cn : content) {
+            // Writing Contacts to log
+            G.Log(TAG,"Name:"+ cn.getName()+ " desc:" + cn.getText() + " url:"+cn.getUrl());
+            if (subFiles != null) {
+                //G.Log("Files " +subFiles);
+                for (File file : subFiles) {
+                    G.Log("Filename " + cn.getName() + " " +file.getAbsolutePath()+" "+file.getName()+" "+file.length());
+                    if (file.getName().equals(cn.getName())) file.delete();
+                }
+            }
+            db.rmContent(cn.getUri());
+
+        }
+        FragmentTransaction ft = getFragmentManager().beginTransaction();
+        ft.detach(this).attach(this).commit();
+        mAdapter.setContent(db.getContent());
+        mAdapter.notifyDataSetChanged();
+
+        // Intent broadcast = new Intent(UbiCDNConnectivityService.CLEAR_VIDEOS);
+        //sleep(2000);
+       // getContext().sendBroadcast(broadcast);
+
+    }
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {

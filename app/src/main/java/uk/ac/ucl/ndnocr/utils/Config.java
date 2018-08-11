@@ -50,12 +50,14 @@ public class Config
 	//How long to wait for a connection to be successful
 	public static final long wifiConnectionWaitingTime = 60000;
 
+	public static final long wifiScanTime = 10000;
+
 	//How long to wait for another source device
 	public static final long sourceDeviceWaitingTime = 30000;
 
 	public static final long createFaceWaitingTime = 1000;
 
-	public static final long interestLifeTime = 15000;
+	public static final long interestLifeTime = 30000;
 
 	public static final long videoLifeTime = 20000;
 

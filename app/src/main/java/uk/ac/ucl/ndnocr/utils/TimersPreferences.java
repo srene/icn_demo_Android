@@ -13,6 +13,8 @@ import net.grandcentrix.tray.AppPreferences;
 public class TimersPreferences{
 
     private final static String WIFI="WF_Waiting_time";
+    private final static String WIFI_SCAN="WF_scan_time";
+    private final static String INTEREST_LIFE="INT_life_time";
     private final static String WIFI_HS_RESTART="WF_Hotspot_restart_time";
     private final static String PEER_SUCCESS="Peer_success_time";
     private final static String PEER_FAILED="Peer_retry_time";
@@ -52,6 +54,28 @@ public class TimersPreferences{
     public void setWifiWaitingTime(long time)
     {
         appPreferences.put(WIFI,time);
+    }
+
+    public long getWifiScanTime()
+    {
+        return appPreferences.getLong(WIFI_SCAN,Config.wifiScanTime);
+
+    }
+
+    public void setWifiScanTime(long time)
+    {
+        appPreferences.put(WIFI_SCAN,time);
+    }
+
+    public long getInterestLifeTime()
+    {
+        return appPreferences.getLong(INTEREST_LIFE,Config.interestLifeTime);
+
+    }
+
+    public void setInterestLifeTime(long time)
+    {
+        appPreferences.put(INTEREST_LIFE,time);
     }
 
     public long getPeerSuccessTime()
