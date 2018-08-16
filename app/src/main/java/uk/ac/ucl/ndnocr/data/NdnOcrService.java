@@ -357,20 +357,10 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         G.Log(TAG,"wifiLinkDisconnected");
         m_isConnected = false;
 
-        try {
-            MyNfdc nfdc = new MyNfdc();
-            if(faceId!=0){
-                nfdc.ribUnregisterPrefix(new Name("/ubicdn/video/"), faceId);
-                nfdc.faceDestroy(faceId);
-            }
-            faceId=0;
-            nfdc.shutdown();
-        }catch (Exception e){}
         if(m_isServiceStarted) {
             mWifiServiceDiscovery.start(false, id);
         }
-        //serviceStop();
-        //serviceStart();
+
     } // btLinkDisconnected()
 
     public void disconnect(){
