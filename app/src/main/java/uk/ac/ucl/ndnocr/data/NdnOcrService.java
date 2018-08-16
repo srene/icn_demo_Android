@@ -5,8 +5,20 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
@@ -21,11 +33,9 @@ import android.widget.Toast;
 import com.intel.jndn.management.types.ForwarderStatus;
 
 
-import uk.ac.ucl.ndnocr.net.Discovery;
-import uk.ac.ucl.ndnocr.net.Link;
-import uk.ac.ucl.ndnocr.net.LinkListener;
-import uk.ac.ucl.ndnocr.net.wifi.WifiLinkListener;
-import uk.ac.ucl.ndnocr.utils.DispatchQueue;
+import uk.ac.ucl.ndnocr.net.ble.BLEServiceDiscovery;
+import uk.ac.ucl.ndnocr.net.ble.GattServerCallback;
+import uk.ac.ucl.ndnocr.net.wifi.WifiDirectHotSpot;
 import uk.ac.ucl.ndnocr.utils.MyNfdc;
 import uk.ac.ucl.ndnocr.MainActivity;
 import uk.ac.ucl.ndnocr.R;
@@ -61,7 +71,6 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -69,20 +78,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import static android.bluetooth.le.AdvertiseSettings.ADVERTISE_MODE_BALANCED;
+import static android.bluetooth.le.AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
 import static java.lang.Thread.sleep;
+import static uk.ac.ucl.ndnocr.net.ble.Constants.CHARACTERISTIC_ECHO_UUID;
+import static uk.ac.ucl.ndnocr.net.ble.Constants.SERVICE_UUID;
 
-public class NdnOcrService extends Service implements OnInterestCallback, OnRegisterFailed, OnData, OnTimeout, LinkListener, WifiLinkListener {
+public class NdnOcrService extends Service implements OnInterestCallback, OnRegisterFailed, OnData, OnTimeout {
 
-    private PowerManager mPowerManager;
-    private PowerManager.WakeLock mWakeLock;
     private DatabaseHandler db;
 
     /** debug tag */
     public static final String TAG = "NdnOcrService";
-
-    //Service type advertised in WiFi Direct
-    //public static final String SERVICE_INSTANCE = ".ndnocr";
-    //public static final String SERVICE_TYPE = ".ndnocr._tcp";
 
     public NdnOcrService that = this;
 
@@ -99,9 +106,18 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     public static final int SERVICE_WIFI_CONNECTED = 5;
 
     //Connectivity classes
-    Link mWifiLink = null;
-    Discovery mWifiServiceDiscovery = null;
-    DispatchQueue queue;
+    WifiLink mWifiLink;
+    WifiServiceDiscovery mWifiServiceDiscovery;
+    BLEServiceDiscovery mBLEScan;
+    GattServerCallback serverCallback;
+    BluetoothGattServer mBluetoothGattServer;
+    BluetoothManager manager;
+    BluetoothAdapter btAdapter;
+    WifiDirectHotSpot hotspot;
+    private BluetoothLeAdvertiser adv;
+    private AdvertiseCallback advertiseCallback;
+    private int txPowerLevel = ADVERTISE_TX_POWER_MEDIUM;
+    private int advertiseMode = ADVERTISE_MODE_BALANCED;
 
     //While true NDN face is processing events
     public boolean shouldStop=true;
@@ -115,19 +131,17 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     private boolean m_isServiceStarted = false;
     private boolean m_isConnected = false;
 
-    private int id;
     private int pendingInterests;
     private Handler m_handler;
     private Runnable m_statusUpdateRunnable;
 
     public int faceId;
 
-    protected List<String> init = new ArrayList<>();
-
-    boolean shouldConnect=false;
-
     TimersPreferences timers;
 
+    private Handler sHandler;
+
+    BroadcastReceiver mBroadcastReceiver;
 
     //Loading JNI libraries used to run NFD
     static {
@@ -177,17 +191,40 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
         timers = new TimersPreferences(this);
 
+        sHandler = new Handler();
+
         m_serviceMessenger = new Messenger(new ServiceMessageHandler());
-        this.queue = new DispatchQueue();
-        mWifiServiceDiscovery = new WifiServiceDiscovery(this, this,timers);//, stats););
+        hotspot = new  WifiDirectHotSpot(this, timers);
+        mWifiServiceDiscovery = new WifiServiceDiscovery(this,timers);
+        mBLEScan = new BLEServiceDiscovery(this);
         mWifiLink = new WifiLink(this);
         m_handler = new Handler();
+
+        manager = (BluetoothManager) this.getSystemService(BLUETOOTH_SERVICE);
+        btAdapter = manager.getAdapter();
+
+        adv = btAdapter.getBluetoothLeAdvertiser();
+        advertiseCallback = createAdvertiseCallback();
 
         m_statusUpdateRunnable = new Runnable() {
             @Override
             public void run()
             {
                 new StatusUpdateTask().execute();
+            }
+        };
+
+        mBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                G.Log(TAG, "Broadcast received " + intent);
+                switch (intent.getAction()) {
+                    case WifiDirectHotSpot.NETWORK_READY:
+                        String network = intent.getStringExtra("name");
+                        String password = intent.getStringExtra("password");
+                        serverCallback.setNetwork(network, password);
+                      
+                }
             }
         };
 
@@ -230,7 +267,9 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             Set<Map.Entry<String,String>> e = params.entrySet();
 
             startNfd(params);
-            G.Log(TAG,"onCreate timers "+timers.getWifiScanTime()+" "+timers.getInterestLifeTime()+" "+timers.getWifiWaitingTime());
+
+            this.registerReceiver(mBroadcastReceiver, getIntentFilter());
+            //G.Log(TAG,"onCreate timers "+timers.getWifiScanTime()+" "+timers.getInterestLifeTime()+" "+timers.getWifiWaitingTime());
 
             // Example how to retrieve all available NFD log modules
             List<String> modules = getNfdLogModules();
@@ -238,7 +277,21 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                 G.Log(module);
             }
 
+            if (btAdapter == null) {
+                G.Log(TAG, "Bluetooth Error", "Bluetooth not detected on device");
+                return;
+            } else if (!btAdapter.isEnabled()) {
+                G.Log(TAG, "Bluetooth Not enabled");
+                return;
+            } else {
+                startAdvertising();
+                startServer();
+            }
+
             m_handler.postDelayed(m_statusUpdateRunnable, 50);
+
+            hotspot.Start();
+
 
             G.Log(TAG, "serviceStart()");
         } else {
@@ -256,8 +309,12 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             m_isServiceStarted = false;
             // TODO: Save NFD and NRD in memory data structures.
             stopNfd();
+            stopAdvertising();
+            stopServer();
+            hotspot.Stop();
             mWifiLink.disconnect();
             mWifiServiceDiscovery.stop();
+            mBLEScan.stop();
             m_handler.removeCallbacks(m_statusUpdateRunnable);
             G.Log(TAG, "serviceStop()");
         }
@@ -278,8 +335,10 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     final Face mFace = new Face("localhost");
                     KeyChain keyChain = buildTestKeyChain();
                     mFace.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
-                    mWifiServiceDiscovery.start(false,id);
-
+                    if(db.getPendingCount()>0) {
+                        mWifiServiceDiscovery.start();
+                        mBLEScan.start();
+                    }
                     while (m_isServiceStarted) {
                         mFace.processEvents();
                     }
@@ -300,19 +359,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         return m_serviceMessenger.getBinder();
     }
 
-    public void turnOnScreen(){
-        // turn on screen
-        G.Log(TAG,"ProximityActivity", "ON!");
-        mPowerManager =  (PowerManager) getSystemService(Context.POWER_SERVICE);
-        //PowerManager.ACQUIRE_CAUSES_WAKEUP
-        mWakeLock = mPowerManager.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "tag");
-        mWakeLock.acquire();
-
-
-    }
-
-    @Override
-    public void linkNetworkDiscovered(Link link, String network)
+    public void linkNetworkDiscovered(String network)
     {
 
         String[] separated = network.split(":");
@@ -326,6 +373,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     //shouldConnect=false;
                     G.Log(TAG,"StartConnection");
                     mWifiServiceDiscovery.stop();
+                    mBLEScan.stop();
                     //turnOnScreen();
                     mWifiLink.connect(separated[0], separated[1]);
 
@@ -338,8 +386,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
     }
 
-    @Override
-    public void wifiLinkConnected(Link link, String network) {
+    public void wifiLinkConnected(String network) {
 
         G.Log(TAG, "Wifi Link connected "+network+" "+Config.SSID);
         if(db.getPendingCount()>0){
@@ -351,8 +398,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         }
     }
 
-    @Override
-    public void wifiLinkDisconnected(Link link)
+    public void wifiLinkDisconnected()
     {
         G.Log(TAG,"wifiLinkDisconnected");
         m_isConnected = false;
@@ -366,8 +412,9 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             faceId=0;
             nfdc.shutdown();
         }catch (Exception e){}
-        if(m_isServiceStarted) {
-            mWifiServiceDiscovery.start(false, id);
+        if(m_isServiceStarted&&(db.getPendingCount()>0)) {
+            mWifiServiceDiscovery.start();
+            mBLEScan.start();
         }
         //serviceStop();
         //serviceStart();
@@ -380,87 +427,94 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         serviceStart();
     }
 
-    @Override
-    public void linkConnected(Link link)
-    {
-        G.Log(TAG,"btLinkConnected");
-
-    }
-
-    @Override
-    public void linkDisconnected(Link link)
-    {
-        G.Log(TAG,"btLinkDisconnected");
-    }
-
     public void onInterest(Name name, Interest interest, Face face, long l, InterestFilter filter) {
 
         G.Log(TAG,"Interest received "+interest.getName().toString());
         //filter.
         // /todo check if the file exists first
         // if(interest.getNonce().equals(nonce))return;
-        try {
-            byte[] bytes;
-            Data data;
+        if(interest.getName().getPrefix(2).equals(Config.prefix)){
 
-            File dir = getFilesDir();
-            File[] subFiles = dir.listFiles();
-            for (File file : subFiles) {
-                G.Log("Filename " + file.getAbsolutePath() + " " + file.getName() + " " + file.length());
-            }
-            String filename = interest.getName().get(2).toEscapedString();
-            File f = new File(getFilesDir() + "/" + filename);
-            InputStream fis = new FileInputStream(f);
-            bytes = new byte[(int) f.length()];
-
-
-
+            Interest imgInterest= new Interest(new Name("/pic/"+interest.getName().getPrefix(2)+"/"+interest.getName().getPrefix(3)));
+            imgInterest.setInterestLifetimeMilliseconds(timers.getInterestLifeTime());
+            imgInterest.setMustBeFresh(true);
             try {
-                fis.read(bytes);
-                Blob blob = new Blob(bytes);
-                data = new Data();
-                data.setName(interest.getName());
-                //data.wireDecode(blob);
-                data.setContent(blob);
+                face.expressInterest(interest, that, that);
+            }catch (IOException e){
+                G.Log(TAG,"IOexception at sending interest "+e);
+            }
+            //pendingInterest.insert(std::make_pair(interest.getName().get(3).toUri(),interest.getName()));
 
-                G.Log(TAG,"Get file " + data.getContent().size());
-                //FireBaseLogger.videoSent(this,new Date(),interest.getName().get(2).toEscapedString());
-                face.putData(data);
 
+        }else if (interest.getName().get(0).equals("pic")) {
+            try {
+                byte[] bytes;
+                Data data;
+
+                File dir = getFilesDir();
+                File[] subFiles = dir.listFiles();
+                for (File file : subFiles) {
+                    G.Log("Filename " + file.getAbsolutePath() + " " + file.getName() + " " + file.length());
+                }
+                String filename = interest.getName().get(2).toEscapedString();
+                File f = new File(getFilesDir() + "/" + filename);
+                InputStream fis = new FileInputStream(f);
+                bytes = new byte[(int) f.length()];
+
+
+                try {
+                    fis.read(bytes);
+                    Blob blob = new Blob(bytes);
+                    data = new Data();
+                    data.setName(interest.getName());
+                    //data.wireDecode(blob);
+                    data.setContent(blob);
+
+                    G.Log(TAG, "Get file " + data.getContent().size());
+                    //FireBaseLogger.videoSent(this,new Date(),interest.getName().get(2).toEscapedString());
+                    face.putData(data);
+
+                } catch (IOException e) {
+                    G.Log(TAG, e.getMessage());
+                    //}catch(EncodingException e){
+                    //     G.Log(TAG,e.getMessage());
+                } finally {
+                    fis.close();
+                }
+
+            } catch (FileNotFoundException e) {
+                G.Log(TAG, e.getMessage());
             } catch (IOException e) {
                 G.Log(TAG, e.getMessage());
-            //}catch(EncodingException e){
-            //     G.Log(TAG,e.getMessage());
-            }finally {
-                fis.close();
             }
-
-        } catch (FileNotFoundException e) {
-            G.Log(TAG, e.getMessage());
-        } catch (IOException e){
-            G.Log(TAG,e.getMessage());
         }
 
     }
 
     public void onData(Interest interest, Data data){
 
-        G.Log(TAG,"OCR message received  "+data.getContent().toString());
-        try {
-            boolean fg = new ForegroundCheckTask().execute(this).get();
-            if(fg)        sendToast("OCR message received " + data.getContent().toString());
-            else sendNotification("OCR message received " + data.getContent().toString());
-        }catch (ExecutionException e){
-            e.printStackTrace();
-        }catch (InterruptedException e){
-            e.printStackTrace();
+
+        if(interest.getName().getPrefix(2).equals(Config.prefix)) {
+            G.Log(TAG, "OCR message received  " + data.getContent().toString());
+            try {
+                boolean fg = new ForegroundCheckTask().execute(this).get();
+                if (fg) sendToast("OCR message received " + data.getContent().toString());
+                else sendNotification("OCR message received " + data.getContent().toString());
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            db.setContentText(data.getName().get(3).toEscapedString(), data.getContent().toString());
+            db.setContentDownloaded(Config.prefix + data.getName().get(3).toEscapedString());
+            pendingInterests--;
+            Intent broadcast = new Intent(NEW_RESULT);
+            sendBroadcast(broadcast);
+            if (pendingInterests == 0) disconnect();
+        } else if (interest.getName().get(0).equals("pic")) {
+
         }
-        db.setContentText(data.getName().get(3).toEscapedString(),data.getContent().toString());
-        db.setContentDownloaded(Config.prefix+data.getName().get(3).toEscapedString());
-        pendingInterests--;
-        Intent broadcast = new Intent(NEW_RESULT);
-        sendBroadcast(broadcast);
-        if(pendingInterests==0)disconnect();
+
 
     }
 
@@ -588,30 +642,6 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         }).start();
     }
 
-    class ForegroundCheckTask extends AsyncTask<Context, Void, Boolean> {
-
-        @Override
-        protected Boolean doInBackground(Context... params) {
-            final Context context = params[0].getApplicationContext();
-            return isAppOnForeground(context);
-        }
-
-        private boolean isAppOnForeground(Context context) {
-            ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-            List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
-            if (appProcesses == null) {
-                return false;
-            }
-            final String packageName = context.getPackageName();
-            for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
-                if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND && appProcess.processName.equals(packageName)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
     public String getLocalIPAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
@@ -654,6 +684,109 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         return "192.168.49.1";
     }
 
+    private AdvertiseCallback createAdvertiseCallback() {
+        return new AdvertiseCallback() {
+            @Override
+            public void onStartFailure(int errorCode) {
+                switch (errorCode) {
+                    case ADVERTISE_FAILED_DATA_TOO_LARGE:
+                        G.Log(TAG,"ADVERTISE_FAILED_DATA_TOO_LARGE");
+                        break;
+                    case ADVERTISE_FAILED_TOO_MANY_ADVERTISERS:
+                        G.Log(TAG,"ADVERTISE_FAILED_TOO_MANY_ADVERTISERS");
+                        break;
+                    case ADVERTISE_FAILED_ALREADY_STARTED:
+                        G.Log(TAG,"ADVERTISE_FAILED_ALREADY_STARTED");
+                        break;
+                    case ADVERTISE_FAILED_INTERNAL_ERROR:
+                        G.Log(TAG,"ADVERTISE_FAILED_INTERNAL_ERROR");
+                        break;
+                    case ADVERTISE_FAILED_FEATURE_UNSUPPORTED:
+                        G.Log(TAG,"ADVERTISE_FAILED_FEATURE_UNSUPPORTED");
+                        break;
+                    default:
+                        G.Log(TAG,"startAdvertising failed with unknown error " + errorCode);
+                        break;
+                }
+            }
+        };
+    }
+
+
+    private void startAdvertising() {
+        G.Log(TAG, "Starting ADV, Tx power");
+
+        AdvertiseSettings advertiseSettings = new AdvertiseSettings.Builder()
+                .setAdvertiseMode(advertiseMode)
+                .setTxPowerLevel(txPowerLevel)
+                .setConnectable(true)
+                .build();
+
+        AdvertiseData advertiseData = new AdvertiseData.Builder()
+                // .addServiceData(SERVICE_UUID, serviceData)
+                .addServiceUuid(SERVICE_UUID)
+                .setIncludeTxPowerLevel(false)
+                .setIncludeDeviceName(false)
+                .build();
+
+        adv.startAdvertising(advertiseSettings, advertiseData, advertiseCallback);
+    }
+
+    private void stopAdvertising() {
+        G.Log(TAG, "Stopping ADV");
+        adv.stopAdvertising(advertiseCallback);
+        //setEnabledViews(true, namespace, instance, rndNamespace, rndInstance, txPower, txMode);
+    }
+
+    /**
+     * Initialize the GATT server instance with the services/characteristics
+     * from the Time Profile.
+     */
+    private void startServer() {
+        G.Log(TAG, "Start server "+hotspot+" "+manager.getConnectedDevices(BluetoothProfile.GATT));
+
+        serverCallback = new GattServerCallback(this,hotspot);
+        mBluetoothGattServer = manager.openGattServer(this, serverCallback);
+        serverCallback.setServer(mBluetoothGattServer);
+
+        if (mBluetoothGattServer == null) {
+            G.Log(TAG, "Unable to create GATT server");
+            return;
+        }
+		/*BluetoothGattService service = new BluetoothGattService(SERVICE_UUID.getUuid(),
+				BluetoothGattService.SERVICE_TYPE_PRIMARY);
+		mBluetoothGattServer.addService(service);*/
+        setupServer();
+
+        // Initialize the local UI
+        //updateLocalUi(System.currentTimeMillis());
+    }
+
+    private void stopServer() {
+        if (mBluetoothGattServer == null) return;
+        //mBluetoothGattServer.cancelConnection();
+        mBluetoothGattServer.clearServices();
+        mBluetoothGattServer.close();
+    }
+
+    // GattServer
+
+    private void setupServer() {
+        BluetoothGattService service = new BluetoothGattService(SERVICE_UUID.getUuid(),
+                BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
+        // Write characteristic
+        BluetoothGattCharacteristic writeCharacteristic = new BluetoothGattCharacteristic(
+                CHARACTERISTIC_ECHO_UUID,
+                BluetoothGattCharacteristic.PROPERTY_WRITE,
+                // Somehow this is not necessary, the client can still enable notifications
+//                        | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_WRITE);
+
+        service.addCharacteristic(writeCharacteristic);
+
+        mBluetoothGattServer.addService(service);
+    }
 
     public static KeyChain buildTestKeyChain() throws SecurityException {
         MemoryIdentityStorage identityStorage = new MemoryIdentityStorage();
@@ -668,6 +801,31 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         }
         return keyChain;
     }
+
+    class ForegroundCheckTask extends AsyncTask<Context, Void, Boolean> {
+
+        @Override
+        protected Boolean doInBackground(Context... params) {
+            final Context context = params[0].getApplicationContext();
+            return isAppOnForeground(context);
+        }
+
+        private boolean isAppOnForeground(Context context) {
+            ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+            if (appProcesses == null) {
+                return false;
+            }
+            final String packageName = context.getPackageName();
+            for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+                if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND && appProcess.processName.equals(packageName)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
 
     /**
      * Message handler for the the ubiCDN Service.
@@ -758,5 +916,11 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                 initService();
             }
         }
+    }
+
+    public static IntentFilter getIntentFilter() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(WifiDirectHotSpot.NETWORK_READY);
+        return filter;
     }
 }

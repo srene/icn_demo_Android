@@ -16,10 +16,7 @@ import android.util.Log;
 
 import java.util.List;
 
-//import uk.ac.ucl.ndnocr.data.StatsHandler;
-import uk.ac.ucl.ndnocr.net.Discovery;
-import uk.ac.ucl.ndnocr.net.Link;
-import uk.ac.ucl.ndnocr.net.LinkListener;
+import uk.ac.ucl.ndnocr.data.NdnOcrService;
 import uk.ac.ucl.ndnocr.utils.Config;
 import uk.ac.ucl.ndnocr.utils.G;
 import uk.ac.ucl.ndnocr.utils.TimersPreferences;
@@ -28,13 +25,12 @@ import uk.ac.ucl.ndnocr.utils.TimersPreferences;
 /**
  * Created by srenevic on 03/08/17.
  */
-public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelListener{
+public class WifiServiceDiscovery {
 
 
     Context context;
 
     WifiServiceDiscovery that = this;
-    LinkListener listener;
 
     private BroadcastReceiver receiver;
     private IntentFilter filter;
@@ -48,7 +44,8 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
     private Handler mServiceBroadcastingHandler;
 
     TimersPreferences timers;
-   // public static final long SERVICE_BROADCASTING_INTERVAL = 10000;
+
+    NdnOcrService service;
 
 
     enum ServiceState{
@@ -58,16 +55,16 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
     }
     ServiceState myServiceState = ServiceState.NONE;
 
-    public WifiServiceDiscovery(Context Context, LinkListener listener, TimersPreferences timers) {
-        this.context = Context;
-        this.listener = listener;
+    public WifiServiceDiscovery(Context context, TimersPreferences timers) {
+        this.context = context;
+        service = (NdnOcrService) context;
         this.timers = timers;
         apManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
         mServiceBroadcastingHandler = new Handler();
 
     }
 
-    public void start(boolean source, int id) {
+    public void start() {
 
         if (!isRunning()) {
             isRunning = true;
@@ -106,23 +103,6 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
 
     }
 
-    @Override
-    public void onChannelDisconnected() {
-        //
-       // btLinkDisconnected();
-    }
-
-    @Override
-    public void transportLinkConnected(Link link){
-
-    }
-
-    @Override
-    public void transportLinkDisconnected(Link link){
-
-    }
-
-
 
     public boolean isRunning(){
         return isRunning;
@@ -156,19 +136,16 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
                         Log.d(TAG, "Disconnected");
 
                 }
-            } //else
+            }
             if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(action)) {
 
                 List<ScanResult> l = apManager.getScanResults();
 
                 for (ScanResult r : l) {
-                    //use r.SSID or r.BSSID to identify your home network and take action
-                         Log.d(TAG, r.SSID + "" +Config.SSID+" "+!isConnectedViaWifi()+" "+ r.level +" "+!isAlreadyConnected()+"\r\n");
-                   // if (r.SSID.equals(Config.SSID) && !isConnectedViaWifi()) {
+
                     if (r.SSID.equals(Config.SSID) && !isAlreadyConnected()) {
-                        listener.linkNetworkDiscovered(null,Config.SSID+":"+Config.passwd);
+                        service.linkNetworkDiscovered(Config.SSID+":"+Config.passwd);
                     }
-                    // Log.d(TAG, "conneting to: ssid");
                 }
             }
         }
@@ -187,17 +164,10 @@ public class WifiServiceDiscovery implements Discovery, WifiP2pManager.ChannelLi
     private Runnable mServiceBroadcastingRunnable = new Runnable() {
         @Override
         public void run() {
-            Log.d(TAG,"Start scan");
-            // apManager.startScan();
-            // apManager.reconnect();
             while(apManager.startScan()==false){
-                Log.d(TAG,"Start scan failed");
                 apManager.startScan();
             }
-        /*Log.d(TAG,"Wifi state "+apManager.getWifiState());
-        List<ScanResult> res = apManager.getScanResults();
-        for(ScanResult r : res)
-            Log.d(TAG,"result "+r.SSID);*/
+
             mServiceBroadcastingHandler
                     .postDelayed(mServiceBroadcastingRunnable, timers.getWifiScanTime());
         }
