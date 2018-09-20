@@ -55,7 +55,7 @@ public class Config
 	//How long to wait for another source device
 	public static final long sourceDeviceWaitingTime = 30000;
 
-	public static final long createFaceWaitingTime = 1000;
+	public static final long createFaceWaitingTime = 10000;
 
 	public static final long interestLifeTime = 30000;
 

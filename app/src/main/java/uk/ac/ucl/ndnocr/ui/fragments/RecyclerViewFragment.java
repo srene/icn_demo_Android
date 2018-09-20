@@ -25,6 +25,8 @@ import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
@@ -50,6 +52,7 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.List;
 
+import uk.ac.ucl.ndnocr.MainActivity;
 import uk.ac.ucl.ndnocr.utils.Config;
 import uk.ac.ucl.ndnocr.R;
 import uk.ac.ucl.ndnocr.data.Content;
@@ -69,6 +72,7 @@ public class RecyclerViewFragment extends Fragment {
     private static final int SPAN_COUNT = 2;
     private static final int DATASET_COUNT = 60;
     private static final int CHOOSE_FILE_REQUESTCODE = 42;
+    private static final int MAX_FILE_SIZE = 500000;
 
     private enum LayoutManagerType {
         GRID_LAYOUT_MANAGER,
@@ -86,6 +90,7 @@ public class RecyclerViewFragment extends Fragment {
     protected RecyclerView.LayoutManager mLayoutManager;
     protected String[] mDataset;
     DatabaseHandler db;
+    Handler mHandler;
     public static RecyclerViewFragment newInstance() {
         return new RecyclerViewFragment();
     }
@@ -336,12 +341,18 @@ public class RecyclerViewFragment extends Fragment {
     {
         try {
             File mFile = new File(getActivity().getFilesDir(), "pic"+System.currentTimeMillis()+".jpg");
+            File f = new File(path.getPath());
+            G.Log(TAG,"File size "+f.length());
+            if(f.length()>MAX_FILE_SIZE){
+                Toast.makeText(getContext(),"Image file size too big",Toast.LENGTH_SHORT).show();
+            } else {
+                mHandler = new Handler();
+                mHandler.post(new ImageSaver(path, mFile, getContext()));
 
-            (new Handler()).post(new ImageSaver(path, mFile,getContext()));
-
-            Content c = new Content(mFile.getName(), Config.prefix+mFile.getName(),"Image to be processed",mFile.getAbsolutePath());
-            DatabaseHandler db = new DatabaseHandler(getContext());
-            db.addContent(c);
+                Content c = new Content(mFile.getName(), Config.prefix + mFile.getName(), "Image to be processed", mFile.getAbsolutePath());
+                DatabaseHandler db = new DatabaseHandler(getContext());
+                db.addContent(c);
+            }
             //db.setContentDownloaded(c.getUri());
 
         }catch (Exception e){
@@ -405,9 +416,13 @@ public class RecyclerViewFragment extends Fragment {
                 File inputFile = new File(PathUtil.getPath(mContext,mName));
                 long fileSize = inputFile.length();
                 G.Log("Filename "+inputFile);
+                if(fileSize>MAX_FILE_SIZE){
+                    return;
+                }
                 InputStream inputStream = new FileInputStream(inputFile);
                 byte[] buf = new byte[(int) fileSize];
                 inputStream.read(buf);
+
                 //ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
                 //byte[] bytes = new byte[buffer.remaining()];
                 //buffer.get(buf);
@@ -416,7 +431,7 @@ public class RecyclerViewFragment extends Fragment {
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (URISyntaxException ue) {
-                ue.printStackTrace();
+                    ue.printStackTrace();
                 }finally  {
                    // mImage.close();
                     if (null != output) {
@@ -430,6 +445,23 @@ public class RecyclerViewFragment extends Fragment {
 
         }
 
+    }
+
+    /**
+     * Shows a {@link Toast} on the UI thread.
+     *
+     * @param text The message to show
+     */
+    private void showToast(final String text) {
+        final Activity activity = getActivity();
+        if (activity != null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(activity, text, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
 }

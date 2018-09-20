@@ -563,7 +563,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     }
                     mFace.shutdown();
                 } catch (Exception e) {
-                    if(retry< Config.maxRetry) {
+                    if(retry< Config.maxRetry && m_isServiceStarted) {
                         createFaceandSend(IP, uri);
                     }else {
                         //mWifiLink.disconnect();
