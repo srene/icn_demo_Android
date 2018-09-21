@@ -255,7 +255,7 @@ getParams(JNIEnv* env, jobject jParams)
 
 
 JNIEXPORT void JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_startNfd(JNIEnv* env, jclass, jobject jParams)
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_startNfd(JNIEnv* env, jclass, jobject jParams)
 {
   if (nfd::g_runner.get() == nullptr) {
     nfd::g_params = getParams(env, jParams);
@@ -292,7 +292,7 @@ Java_uk_ac_ucl_ndnocr_data_NdnOcrService_startNfd(JNIEnv* env, jclass, jobject j
 }
 
 JNIEXPORT void JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_stopNfd(JNIEnv*, jclass)
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_stopNfd(JNIEnv*, jclass)
 {
   if (nfd::g_runner.get() != nullptr) {
     NFD_LOG_INFO("Stopping NFD...");
@@ -302,14 +302,14 @@ Java_uk_ac_ucl_ndnocr_data_NdnOcrService_stopNfd(JNIEnv*, jclass)
 }
 
 JNIEXPORT jboolean JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_isNfdRunning(JNIEnv*, jclass)
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_isNfdRunning(JNIEnv*, jclass)
 {
         //do nothing
         return true;
 }
 
 JNIEXPORT jobject JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_getNfdLogModules(JNIEnv* env, jclass)
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_getNfdLogModules(JNIEnv* env, jclass)
 {
   jclass jcLinkedList = env->FindClass("java/util/LinkedList");
   jmethodID jcLinkedListConstructor = env->GetMethodID(jcLinkedList, "<init>", "()V");

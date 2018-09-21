@@ -14,7 +14,7 @@ extern "C" {
  * Signature: (Ljava/lang/Map;)V
  */
 JNIEXPORT void JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_startNfd(JNIEnv*, jclass, jobject);
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_startNfd(JNIEnv*, jclass, jobject);
 
 /*
  * Class:     uk_ac_ucl_umobile_net_UbiCDNService
@@ -22,7 +22,7 @@ Java_uk_ac_ucl_ndnocr_data_NdnOcrService_startNfd(JNIEnv*, jclass, jobject);
  * Signature: ()V
  */
 JNIEXPORT void JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_stopNfd(JNIEnv*, jclass);
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_stopNfd(JNIEnv*, jclass);
 
 /*
  * Class:     uk_ac_ucl_umobile_net_UbiCDNService
@@ -30,7 +30,7 @@ Java_uk_ac_ucl_ndnocr_data_NdnOcrService_stopNfd(JNIEnv*, jclass);
  * Signature: ()L/java/lang/Boolean;
  */
 JNIEXPORT jboolean JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_isNfdRunning(JNIEnv*, jclass);
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_isNfdRunning(JNIEnv*, jclass);
 
 /*
  * Class:     uk_ac_ucl_umobile_net_UbiCDNService
@@ -38,7 +38,7 @@ Java_uk_ac_ucl_ndnocr_data_NdnOcrService_isNfdRunning(JNIEnv*, jclass);
  * Signature: ()Ljava/util/List;
  */
 JNIEXPORT jobject JNICALL
-Java_uk_ac_ucl_ndnocr_data_NdnOcrService_getNfdLogModules(JNIEnv*, jclass);
+Java_uk_ac_ucl_ndnocrapp_data_NdnOcrService_getNfdLogModules(JNIEnv*, jclass);
 
 #ifdef __cplusplus
 }
