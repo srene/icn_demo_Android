@@ -1,5 +1,5 @@
-NDN OCR Application used in the ACM ICN 2018 Demo
-==================================================
+NDN OCR Application used in the Computation offloading wthi ICN [ACM ICN 2018 Demo] (http://conferences.sigcomm.org/acm-icn/2018/proceedings/icn18posterdemo-final4.pdf)
+================================================
 
 [![Build Status](https://travis-ci.org/named-data-mobile/NFD-android.svg?branch=master)](https://travis-ci.org/named-data-mobile/NFD-android)
 
