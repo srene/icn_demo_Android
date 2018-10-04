@@ -1,61 +1,70 @@
-NDN OCR Application used in the Computation offloading wthi ICN [ACM ICN 2018 Demo] (http://conferences.sigcomm.org/acm-icn/2018/proceedings/icn18posterdemo-final4.pdf)
+NDN OCR Application used in the Computation offloading with ICN [ACM ICN 2018 Demo](http://conferences.sigcomm.org/acm-icn/2018/proceedings/icn18posterdemo-final4.pdf)
 ================================================
 
-[![Build Status](https://travis-ci.org/named-data-mobile/NFD-android.svg?branch=master)](https://travis-ci.org/named-data-mobile/NFD-android)
+This version of the Android app supports Device-to-Device (D2D) communications and therefore the possibilty of offloading computation to other smarphones for Optical Character Recognition (OCR).
 
 ## Prerequisites
 
 To compile code, the following is necessary
 
-- Recent version of [Android SDK](http://developer.android.com/sdk/index.html), android-23 SDK
-  and 23.0.2 build tools (for build), android-19 SDK (for compatibility), and several other SDK
-  components
-- [CrystalX Android NDK](https://www.crystax.net/en/download) version 10.3.1
+- Recent version of [Android SDK](http://developer.android.com/sdk/index.html)
 
-Example script for Ubuntu 14.04 to get all dependencies, download SDK and NDK:
+Example script for Ubuntu 16.04 to get all dependencies, download SDK and NDK:
 
-    CRYSTAX_NDK_VERSION=10.3.1
-    SDK_VERSION=24.4.1
-
-    BUILD_TOOLS_VERSION=23.0.2
-    COMPILE_SDK_VERSION=23
-
-    sudo apt-get install -y build-essential git openjdk-7-jdk unzip
+    sudo apt -q update
+    sudo apt -qy upgrade
+    sudo apt-get install -y build-essential git openjdk-8-jdk unzip ruby ruby-rugged
     sudo apt-get install -y lib32stdc++6 lib32z1 lib32z1-dev
 
-    wget https://www.crystax.net/download/crystax-ndk-$CRYSTAX_NDK_VERSION-linux-x86_64.tar.xz
-    tar xf crystax-ndk-$CRYSTAX_NDK_VERSION-linux-x86_64.tar.xz
-    rm crystax-ndk-$CRYSTAX_NDK_VERSION-linux-x86_64.tar.xz
+    mkdir android-sdk-linux
+    cd android-sdk-linux
+    wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip
+    unzip sdk-tools-linux-3859397.zip
+    rm sdk-tools-linux-3859397.zip
 
-    wget http://dl.google.com/android/android-sdk_r$SDK_VERSION-linux.tgz
-    tar zxf android-sdk_r$SDK_VERSION-linux.tgz
-    rm android-sdk_r$SDK_VERSION-linux.tgz
+    export ANDROID_HOME=`pwd`
+    export PATH=${PATH}:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
 
-    export ANDROID_HOME=`pwd`/android-sdk-linux
-    export PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
+    echo "y" | sdkmanager "platform-tools"
+    sdkmanager "platforms;android-28" "ndk-bundle"
 
-    echo "y" | android update sdk --filter platform-tools,build-tools-$BUILD_TOOLS_VERSION,android-$COMPILE_SDK_VERSION,extra-android-support,extra-android-m2repository,extra-google-m2repository --no-ui --all --force
-    echo "y" | android update sdk --filter "android-19" --no-ui --all --force
+    cd ndk-bundle
+    git clone https://github.com/named-data-mobile/android-crew-staging crew.dir
+
+    CREW_OWNER=named-data-mobile crew.dir/crew install target/sqlite target/openssl target/boost
+    CREW_OWNER=named-data-mobile crew.dir/crew install target/ndn_cxx target/nfd
+
+    cd ..
+
+The above `crew` scripts will install pre-compiled versions of sqlite, openssl, and boost libraries.
+For more details about the crew tool, refer to README-dev.md.
 
 ## Building
 
-
     git clone --recursive http://gerrit.named-data.net/NFD-android
     echo sdk.dir=`pwd`/android-sdk-linux > NFD-android/local.properties
-    echo ndk.dir=`pwd`/crystax-ndk-10.3.1 >> NFD-android/local.properties
+    echo ndk.dir=`pwd`/android-sdk-linux/ndk-bundle >> NFD-android/local.properties
     cd NFD-android
 
+    # Build in release mode (you will need to have proper signing keys configured, see README-dev.md)
     ./gradlew assembleRelease
 
+    # Build in debug mode
+    ./gradlew assembleDebug
 
-## Setting up environment using Vagrant
+You can also automatically install debug/release NDN-android to the connected phone
 
-The development setup can be set up with [Vagrant](https://www.vagrantup.com/) and scripts provided
-in `.vagrant/` folder.  After vagrant command-line is installed, the following will create VM
-environment and fetch all necessary dependencies:
+    # build and install release version (will require signing key configuration)
+    ./gradlew installRelease
 
-    cd .vagrant
-    vagrant up
-    vagrant ssh
+    # build and install debug version
+    ./gradlew installDebug
 
-Refer to vagrant documentation for more information.
+Note that you can limit architectures being built using `NDK_BUILD_ABI` variable.  For example,
+
+    export NDK_BUILD_ABI=armeabi-v7a,x86_64
+
+will limit build to `armeabi-v7a` and `x86_64`.
+
+By default, the build script will try to parallelize build to the number of CPUs.  This can be
+overridden using `NDK_BUILD_PARALLEL` variable.
