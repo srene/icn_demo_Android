@@ -68,3 +68,29 @@ will limit build to `armeabi-v7a` and `x86_64`.
 
 By default, the build script will try to parallelize build to the number of CPUs.  This can be
 overridden using `NDK_BUILD_PARALLEL` variable.
+
+##D2D Communications
+
+In this project, we use WiFi Direct to provide D2D connectivity between users. However WiFi Direct Android implementation  requires user participation to accept every connection. In order to allow computation offloading without requiring user participation and thus making it transparent and seamless to users, we use a hybrid mode according to which worker devices, that offers its computation, create a WiFi Direct network using the \textit{WiFi Direct Autonomous Mode}, becoming automatically the Group Owner (GO). This way, these devices create a WiFi Direct group prior to any user joining to it. When users that want to request OCR computation join this network, once discovered, instead of joining it using the WiFi Direct API, they join the network using the WiFi legacy mode in the same way they could connect to an Access Point (AP) or another user offering connectivity in hotspot mode.  This means the 
+destination node connects to the GO's device as if it was a normal WiFi AP. This way, since it is not a proper WiFi Direct connection, no  user intervention is required to accept the connection and the transfer happens transparently. Using this mode, neither the user that requests OCR computation nor the user that offers computation needs to accept the connection being possible to offload computation even with the smartphone with the screen off. 
+
+Once the users leave the network the source nodes shut down the connection and only create the WiFi Direct network when it discovers other users willing to connect.
+
+###Users' discovery
+\textit{DataHop} exploits the so-well known and stable  bluetooth low 
+energy (BLE)~\footnote{https://developer.android.com/guide/topics/connectivity/bluetooth-le} beacons technology in order to 
+exchange information related to the device's applications prior to the WiFi Direct connection, as stated in Figure~\ref{fig:ubicdn2}. 
+Users can hear for these beacons (in a very low energy consumption mode) to discover other users with the same application.
+Through these beacons, \textit{DataHop} source nodes share the applications they distribute content for.
+Once the beacon is discovered, two devices can start a Generic Attribute Profile (GATT) connection to exchange information about the  service. This connection does not require user interaction and can be performed totally transparent to the user end with the power  consumption optimisation of the BLE protocol.
+Furthermore, using the optional MTU size extension to 512 bytes, users are able to advertise all their content and use this information to decide  whether they are interested in any content and therefore start a connection.
+This information may include the list of content available (using a bloomfilter), but also other metadata such as latest update of the 
+content, \eg \texttt{BBC-Sports-1100am} or \emph{application name}, \emph{transport protocol}, \emph{port number}, etc. 
+This way, users can share necessary application information before forming groups.
+Also, the BLE beacon technology is a standard compatible with not only any Android device but also with iOS devices and any other wireless device compliant to the standard. This will allow us to develop the \textit{DataHop Network} platform for any device.
+
+
+##Source code 
+
+The source code of the app is organized as following:
+
