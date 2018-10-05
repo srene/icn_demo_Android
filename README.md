@@ -106,14 +106,53 @@ The source code of the app is organized as following:
 |           |       `-- ac
 |           |           `-- ucl
 |           |               `-- ndnocr
+|           |                   |-- App.java
+|           |                   |-- MainActivity.java
 |           |                   |-- data
+|           |                   |   |-- Content.java
+|           |                   |   |-- DatabaseHandler.java
+|           |                   |   |-- NdnOcrService.java
+|           |                   |   `-- OcrText.java
 |           |                   |-- net
 |           |                   |   |-- ble
+|           |                   |   |   |-- BLEServiceDiscovery.java
+|           |                   |   |   |-- BluetoothUtils.java
+|           |                   |   |   |-- ByteUtils.java
+|           |                   |   |   |-- Constants.java
+|           |                   |   |   |-- GattServerCallback.java
+|           |                   |   |   |-- StringUtils.java
+|           |                   |   |   `-- TimeProfile.java
 |           |                   |   `-- wifi
+|           |                   |       |-- WifiDirectHotSpot.java
+|           |                   |       |-- WifiLink.java
+|           |                   |       `-- WifiServiceDiscovery.java
 |           |                   |-- ui
 |           |                   |   |-- fragments
+|           |                   |   |   |-- AutoFitTextureView.java
+|           |                   |   |   |-- BackPressable.java
+|           |                   |   |   |-- BaseFragment.java
+|           |                   |   |   |-- Camera2BasicFragment.java
+|           |                   |   |   |-- CustomAdapter.java
+|           |                   |   |   |-- DrawerFragment.java
+|           |                   |   |   |-- FaceListFragment.java
+|           |                   |   |   |-- FaceStatusFragment.java
+|           |                   |   |   |-- LogcatFragment.java
+|           |                   |   |   |-- LogcatSettingItem.java
+|           |                   |   |   |-- LogcatSettingsFragment.java
+|           |                   |   |   |-- LogcatSettingsManager.java
+|           |                   |   |   |-- RecyclerViewFragment.java
+|           |                   |   |   |-- RouteInfoFragment.java
+|           |                   |   |   |-- RouteListFragment.java
+|           |                   |   |   |-- SettingsFragment.java
+|           |                   |   |   `-- ViewContract.java
 |           |                   |   `-- splash
+|           |                   |       `-- SplashActivity.java
 |           |                   `-- utils
+|           |                       |-- Config.java
+|           |                       |-- G.java
+|           |                       |-- MyNfdc.java
+|           |                       |-- PathUtil.java
+|           |                       `-- TimersPreferences.java
 |           |-- jni
 |           |   |-- NFD 
 |           |   |-- ndn-cxx
