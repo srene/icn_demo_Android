@@ -41,9 +41,9 @@ For more details about the crew tool, refer to README-dev.md.
 
 ## Building
 
-    git clone --recursive http://gerrit.named-data.net/NFD-android
-    echo sdk.dir=`pwd`/android-sdk-linux > NFD-android/local.properties
-    echo ndk.dir=`pwd`/android-sdk-linux/ndk-bundle >> NFD-android/local.properties
+    git clone https://github.com/srene/icn_demo_Android
+    echo sdk.dir=`pwd`/android-sdk-linux > icn_demo_Android/local.properties
+    echo ndk.dir=`pwd`/android-sdk-linux/ndk-bundle >> icn_demo_Android/local.properties
     cd NFD-android
 
     # Build in release mode (you will need to have proper signing keys configured, see README-dev.md)
@@ -52,7 +52,7 @@ For more details about the crew tool, refer to README-dev.md.
     # Build in debug mode
     ./gradlew assembleDebug
 
-You can also automatically install debug/release NDN-android to the connected phone
+You can also automatically install debug/release the app to the connected phone
 
     # build and install release version (will require signing key configuration)
     ./gradlew installRelease
@@ -77,8 +77,8 @@ destination node connects to the GO's device as if it was a normal WiFi AP. This
 Once the users leave the network the source nodes shut down the connection and only create the WiFi Direct network when it discovers other users willing to connect.
 
 ### Users' discovery
-\textit{DataHop} exploits the so-well known and stable  [Bluetooth Low 
-energy (BLE)] (https://developer.android.com/guide/topics/connectivity/bluetooth-le) beacons technology in order to 
+\textit{DataHop} exploits the so-well known and stable [Bluetooth Low 
+energy (BLE)](https://developer.android.com/guide/topics/connectivity/bluetooth-le) beacons technology in order to 
 exchange information related to the device's applications prior to the WiFi Direct connection, as stated in Figure~\ref{fig:ubicdn2}. 
 Users can hear for these beacons (in a very low energy consumption mode) to discover other users with the same application.
 Through these beacons, \textit{DataHop} source nodes share the applications they distribute content for.
@@ -93,4 +93,40 @@ Also, the BLE beacon technology is a standard compatible with not only any Andro
 ##Source code 
 
 The source code of the app is organized as following:
+
+```
+.
+|-- app
+|   |-- libs
+|   |-- release
+|   `-- src
+|       `-- main
+|           |-- java
+|           |   `-- uk
+|           |       `-- ac
+|           |           `-- ucl
+|           |               `-- ndnocr
+|           |                   |-- data
+|           |                   |-- net
+|           |                   |   |-- ble
+|           |                   |   `-- wifi
+|           |                   |-- ui
+|           |                   |   |-- fragments
+|           |                   |   `-- splash
+|           |                   `-- utils
+|           |-- jni
+|           |   |-- NFD 
+|           |   |-- ndn-cxx
+|           |   |-- ndn-cxx-android
+|           |   `-- nfd-android
+|           |-- libs 
+|           |-- obj
+|           |-- play
+|           `-- res 
+`-- gradle
+    `-- wrapper
+
+```
+
+
 
