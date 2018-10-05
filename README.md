@@ -1,4 +1,7 @@
-NDN OCR Application used in the Computation offloading with ICN [ACM ICN 2018 Demo](http://conferences.sigcomm.org/acm-icn/2018/proceedings/icn18posterdemo-final4.pdf)
+NDN OCR Android Application  
+used in the  
+Computation offloading with ICN  
+[ACM ICN 2018 Demo](http://conferences.sigcomm.org/acm-icn/2018/proceedings/icn18posterdemo-final4.pdf)
 ================================================
 
 This version of the Android app supports Device-to-Device (D2D) communications and therefore the possibilty of offloading computation to other smarphones for Optical Character Recognition (OCR).
