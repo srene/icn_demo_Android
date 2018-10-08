@@ -165,7 +165,7 @@ This app also includes the NFD and ndn-cxx libraries native code necessary to pr
 
 ## Running the app
 
-In order to offload computation using the app, we either need two Android devices or one Android device and a Raspberry pi with the OCR service configured like [this] (https://github.com/harnen/icn_demo).
+In order to offload computation using the app, we either need two Android devices or one Android device and a Raspberry Pi with the OCR service configured like in the [demo](https://github.com/harnen/icn_demo).
 
 In case we have two Android devices, we first have to enable one of the devices as a server. In order to do so, we go the the Settings fragment and we enable the Enable OCR server checkbox like in the picture:
 
