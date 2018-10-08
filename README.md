@@ -155,10 +155,10 @@ The source code of the app is organized as following:
 In the folder *app/src/main/java/uk/ac/ucl/ndnocr* folder there is the source code related with the Android application in java. This code is organized as following:
 
 * ndnocr: It includes the code of the main Android activity.
-* ndnocr/data: This folder include all the code related with the OCR service. The *NdnOcrService.java* class is the service that runs on background and implements all the NDN  communications between devices.
-* ndnocr/net: This folder contains the network features (ble for the BLE service discovery and wifi for the WiFI direct and legacy WiFi connection.
-* ndnocr/ui: This folder all the code related with the user interface and the corresponding fragments.
-* ndnocr/utils: Some 
+* ndnocr/data: This folder includes all the code related with the OCR service. The *NdnOcrService.java* class is the service that runs on background and implements all the NDN  communications between devices.
+* ndnocr/net: This folder contains all the connectivity related code (ble for the BLE service discovery and wifi for the WiFI direct and legacy WiFi connection.
+* ndnocr/ui: This folder contains all the code related with the user interface and the corresponding fragments.
+* ndnocr/utils: Some auxiliar classes.
 
 
 This app also includes the NFD and ndn-cxx libraries native code necessary to provide NDN capabilites in the folder *app/src/main/jni/*. This code is originary from the official NFD android [port](https://github.com/named-data-mobile/NFD-android) 
