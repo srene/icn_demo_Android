@@ -1,10 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="uk.ac.ucl.ndnocrapp">
+    package="uk.ac.ucl.ndnocr">
 
-    <uses-sdk android:minSdkVersion="23"
-        android:targetSdkVersion="26"
-        android:maxSdkVersion="26" />
 <uses-permission
     android:name="android.permission.READ_LOGS"
     android:required="true" />
@@ -71,7 +68,7 @@
 
 
     <service
-        android:name="uk.ac.ucl.ndnocrapp.data.NdnOcrService"
+        android:name="uk.ac.ucl.ndnocr.data.NdnOcrService"
         android:process="uk.ac.ucl.ndnocr.data.NdnOcrService"
         android:label="@string/service_name"
         android:exported="true">

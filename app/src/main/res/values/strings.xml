@@ -44,7 +44,7 @@
     <string name="loading_logger">Loading logger …</string>
     <string name="log_settings">Log Settings</string>
     <string name="checking_on_service">Checking on NFD Service …</string>
-    <string name="checkbox_source">Enable source device</string>
+    <string name="checkbox_source">Enable OCR server</string>
     <string name="accessibility_open_drawer">Open NFD Navigation Drawer</string>
     <string name="accessibility_close_drawer">Close NFD Navigation Drawer</string>
     <string name="menu_item_delete_setting_item">Delete</string>

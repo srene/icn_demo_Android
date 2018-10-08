@@ -85,13 +85,27 @@
     </style>
 
     <style name="BlackTheme" parent="DarkTheme">
-        <item name="android:windowBackground">@color/black_background_color</item>
-        <item name="separator_color">@color/black_separator_color</item>
+        <item name="colorPrimary">@color/black_background_color</item>
+        <item name="colorPrimaryDark">@color/black_background_color</item>
         <item name="contrast_background_color">@color/black_contrast_background_color</item>
     </style>
     <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@drawable/splash</item>
     </style>
+
+    <style name="SCBSwitch" parent="Theme.AppCompat.Light">
+        <!-- active thumb & track color (30% transparency) -->
+        <item name="colorControlActivated">#ffffff</item>
+        <item name="colorControlNormal">#A9A9A9</item>
+        <!-- inactive thumb color -->
+        <item name="colorSwitchThumbNormal">#f1f1f1
+        </item>
+        <item name="android:textColor">#ffffff</item>
+        <!-- inactive track color (30% transparency) -->
+        <item name="android:colorForeground">#42221f1f
+        </item>
+    </style>
+
     <style name="default_dialog_margin">
         <item name="android:layout_marginTop">16dp</item>
         <item name="android:layout_marginLeft">4dp</item>
