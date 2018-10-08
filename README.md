@@ -6,13 +6,11 @@ This version of the Android app supports Device-to-Device (D2D) communications a
 
 ## Prerequisites
 
-´´´
 To compile code, the following is necessary
 
 - Recent version of [Android SDK](http://developer.android.com/sdk/index.html)
 
 Example script for Ubuntu 16.04 to get all dependencies, download SDK and NDK:
-Example script for Ubuntu 14.04 to get all dependencies, download SDK and NDK:
 
     CRYSTAX_NDK_VERSION=10.3.1
     SDK_VERSION=24.4.1
@@ -167,5 +165,27 @@ This app also includes the NFD and ndn-cxx libraries native code necessary to pr
 
 ## Running the app
 
+In order to offload computation using the app, we either need two Android devices or one Android device and a Raspberry pi with the OCR service configured like [this] (https://github.com/harnen/icn_demo).
 
-*Note: We detected some issues when running on Android Oreo version. It may have some problems disconnecting from the network and connecting to the WiFi Direct network when discovering other nodes, however if the device is not connected to any WiFi network when running the app, it should connect to other devices with no problem.*
+In case we have two Android devices, we first have to enable one of the devices as a server. In order to do so, we go the the Settings fragment and we enable the Enable OCR server checkbox like in the picture:
+
+<img src="https://raw.githubusercontent.com/srene/icn_demo_Android/d2d/imgs/settings.png" width="250">
+
+After that we start the background OCR service in the server using the switch button:
+
+<img src="https://raw.githubusercontent.com/srene/icn_demo_Android/d2d/imgs/panel.png" width="250">
+
+Once the server is already running, we can start the device that will request the computation. We first load a new picture either using the camera button or loading from the device using the file button. Then we start the background service:
+
+<img src="https://raw.githubusercontent.com/srene/icn_demo_Android/d2d/imgs/file_pending.png" width="250">
+
+The device will automatically discover the OCR server device, will connect to it and send the request along with the image to process: 
+
+<img src="https://raw.githubusercontent.com/srene/icn_demo_Android/d2d/imgs/connected.png" width="250">
+
+The requestor will receive the result from the OCR server, and then disconnect from it. Only if has new images to process, and there is a server in the vicinty that offers computation offloading, will start a new connection.
+
+<img src="https://raw.githubusercontent.com/srene/icn_demo_Android/d2d/imgs/received.png" width="250">
+
+
+*Note: We detected some issues when running the app on Android Oreo version. It may have some problems disconnecting from the network and connecting to the WiFi Direct network when discovering other nodes, however if the device is not connected to any WiFi network when running the app, it should connect to other devices with no problem.*
