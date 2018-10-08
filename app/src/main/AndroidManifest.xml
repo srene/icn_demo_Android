@@ -2,9 +2,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="uk.ac.ucl.ndnocr">
 
-    <uses-sdk android:minSdkVersion="23"
-        android:targetSdkVersion="26"
-        android:maxSdkVersion="26" />
 <uses-permission
     android:name="android.permission.READ_LOGS"
     android:required="true" />

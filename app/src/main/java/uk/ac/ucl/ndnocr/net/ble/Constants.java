@@ -6,9 +6,6 @@ import java.util.UUID;
 
 public class Constants {
 
-   // public static String SERVICE_STRING = "7D2EA28A-F7BD-485A-BD9D-92AD6ECFE93E";
-    //public static UUID SERVICE_UUID = UUID.fromString(SERVICE_STRING);
-
     public static final ParcelUuid SERVICE_UUID =
             ParcelUuid.fromString("0000FEAA-0000-1000-8000-00805F9B34FB");
     public static String CHARACTERISTIC_ECHO_STRING = "7D2EBAAD-F7BD-485A-BD9D-92AD6ECFE93E";

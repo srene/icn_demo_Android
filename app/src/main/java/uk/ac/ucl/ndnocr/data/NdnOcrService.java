@@ -19,6 +19,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
@@ -65,12 +66,14 @@ import net.named_data.jndn.util.Blob;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -83,6 +86,7 @@ import static android.bluetooth.le.AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
 import static java.lang.Thread.sleep;
 import static uk.ac.ucl.ndnocr.net.ble.Constants.CHARACTERISTIC_ECHO_UUID;
 import static uk.ac.ucl.ndnocr.net.ble.Constants.SERVICE_UUID;
+import static uk.ac.ucl.ndnocr.ui.fragments.SettingsFragment.PREF_NDNOCR_SERVICE_SOURCE;
 
 public class NdnOcrService extends Service implements OnInterestCallback, OnRegisterFailed, OnData, OnTimeout {
 
@@ -103,7 +107,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     /** Message to indicate that Service is not running */
     public static final int SERVICE_STOPPED = 4;
     /** Message to indicate that WifiDirect is connected */
-    public static final int SERVICE_WIFI_CONNECTED = 5;
+    public static final int RESTART_SERVICE = 5;
 
     //Connectivity classes
     WifiLink mWifiLink;
@@ -132,16 +136,23 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     private boolean m_isConnected = false;
 
     private int pendingInterests;
+
     private Handler m_handler;
     private Runnable m_statusUpdateRunnable;
 
-    public int faceId;
+    //public int faceId;
 
     TimersPreferences timers;
 
     private Handler sHandler;
 
     BroadcastReceiver mBroadcastReceiver;
+
+    KeyChain keyChain;
+
+    HashMap<String, Name> pending;
+
+    Face mFace;
 
     //Loading JNI libraries used to run NFD
     static {
@@ -223,7 +234,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                         String network = intent.getStringExtra("name");
                         String password = intent.getStringExtra("password");
                         serverCallback.setNetwork(network, password);
-                      
+
                 }
             }
         };
@@ -241,7 +252,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     @Override
     public void onDestroy() {
 
-        G.Log(TAG,"KebappService::onDestroy()");
+        G.Log(TAG,"NdnOcrService::onDestroy()");
         serviceStop();
         stopSelf();
         m_serviceMessenger = null;
@@ -261,8 +272,9 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         if (!m_isServiceStarted) {
             m_isServiceStarted = true;
             G.Log(TAG,"Started");
-            faceId=0;
             HashMap<String, String> params = new HashMap<>();
+            pending = new HashMap<>();
+
             params.put("homePath", getFilesDir().getAbsolutePath());
             Set<Map.Entry<String,String>> e = params.entrySet();
 
@@ -283,14 +295,18 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             } else if (!btAdapter.isEnabled()) {
                 G.Log(TAG, "Bluetooth Not enabled");
                 return;
-            } else {
+            }
+
+            if(isSourceDevice()){
                 startAdvertising();
                 startServer();
+                hotspot.Start();
+
             }
+
 
             m_handler.postDelayed(m_statusUpdateRunnable, 50);
 
-            hotspot.Start();
 
 
             G.Log(TAG, "serviceStart()");
@@ -309,19 +325,33 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             m_isServiceStarted = false;
             // TODO: Save NFD and NRD in memory data structures.
             stopNfd();
-            stopAdvertising();
-            stopServer();
-            hotspot.Stop();
-            mWifiLink.disconnect();
-            mWifiServiceDiscovery.stop();
-            mBLEScan.stop();
+;
+            if(!isSourceDevice()) {
+                mWifiServiceDiscovery.stop();
+                mBLEScan.stop();
+                mWifiLink.disconnect();
+            } else {
+                stopAdvertising();
+                stopServer();
+                hotspot.Stop();
+            }
             m_handler.removeCallbacks(m_statusUpdateRunnable);
+            this.unregisterReceiver(mBroadcastReceiver);
             G.Log(TAG, "serviceStop()");
         }
     }
-    /*protected void setConnect(boolean connect){
-        shouldConnect=connect;
-    }*/
+
+
+    private boolean isSourceDevice(){
+
+        final AppPreferences appPreferences = new AppPreferences(this); // this Preference comes for free from the library
+
+        boolean value = appPreferences.getBoolean(PREF_NDNOCR_SERVICE_SOURCE, false);
+
+        return value;
+
+    }
+
 
     private void initService()
     {
@@ -331,13 +361,19 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             public void run() {
                 try {
                     G.Log(TAG, "Init service thread");
-
+                    keyChain = buildTestKeyChain();
                     final Face mFace = new Face("localhost");
                     KeyChain keyChain = buildTestKeyChain();
                     mFace.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
-                    if(db.getPendingCount()>0) {
+                    if(!isSourceDevice()&&db.getPendingCount()>0) {
                         mWifiServiceDiscovery.start();
                         mBLEScan.start();
+                    }
+                    if(isSourceDevice()){
+                        mFace.registerPrefix(new Name(Config.prefix), that, that);
+
+                    } else {
+
                     }
                     while (m_isServiceStarted) {
                         mFace.processEvents();
@@ -352,6 +388,31 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
     }
 
+    private void registerPictures()
+    {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final Face mFace = new Face("localhost");
+                    KeyChain keyChain = buildTestKeyChain();
+                    mFace.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
+                    for(String name: db.getPendingContent()){
+                        mFace.registerPrefix(new Name("/pic/"+getLocalIPAddress()+"/"+name),that,that);
+                    }
+                    while (m_isServiceStarted) {
+                        mFace.processEvents();
+                    }
+
+
+                } catch (Exception ex) {
+                    G.Log(TAG, ex.toString());
+                }
+            }
+        }).start();
+
+    }
     @Override
     public IBinder onBind(Intent intent) {
 
@@ -391,7 +452,12 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         G.Log(TAG, "Wifi Link connected "+network+" "+Config.SSID);
         if(db.getPendingCount()>0){
             pendingInterests=0;
-            createFaceandSend(Config.GW_IP, Config.prefix);
+            List<String> interests = new ArrayList<>();
+            for(String pending : db.getPendingContent()){
+                interests.add(Config.prefix+getLocalIPAddress()+"/"+pending);
+            }
+            registerPictures();
+            createFaceandSend(Config.GW_IP, Config.prefix,interests);
         }
         if(!m_isConnected) {
             m_isConnected = true;
@@ -403,50 +469,35 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         G.Log(TAG,"wifiLinkDisconnected");
         m_isConnected = false;
 
-        try {
-            MyNfdc nfdc = new MyNfdc();
-            if(faceId!=0){
-                nfdc.ribUnregisterPrefix(new Name("/ubicdn/video/"), faceId);
-                nfdc.faceDestroy(faceId);
-            }
-            faceId=0;
-            nfdc.shutdown();
-        }catch (Exception e){}
         if(m_isServiceStarted&&(db.getPendingCount()>0)) {
             mWifiServiceDiscovery.start();
             mBLEScan.start();
         }
-        //serviceStop();
-        //serviceStart();
-    } // btLinkDisconnected()
+
+    }  // btLinkDisconnected()
 
     public void disconnect(){
 
         G.Log(TAG,"Just disconnect");
-        serviceStop();
-        serviceStart();
+        if(m_isServiceStarted) {
+            serviceStop();
+            serviceStart();
+        }
     }
 
     public void onInterest(Name name, Interest interest, Face face, long l, InterestFilter filter) {
 
-        G.Log(TAG,"Interest received "+interest.getName().toString());
-        //filter.
-        // /todo check if the file exists first
-        // if(interest.getNonce().equals(nonce))return;
-        if(interest.getName().getPrefix(2).equals(Config.prefix)){
+        G.Log(TAG,"Interest received "+interest.getName().toString() +" "+interest.getName().get(0).toEscapedString());
 
-            Interest imgInterest= new Interest(new Name("/pic/"+interest.getName().getPrefix(2)+"/"+interest.getName().getPrefix(3)));
-            imgInterest.setInterestLifetimeMilliseconds(timers.getInterestLifeTime());
-            imgInterest.setMustBeFresh(true);
-            try {
-                face.expressInterest(interest, that, that);
-            }catch (IOException e){
-                G.Log(TAG,"IOexception at sending interest "+e);
-            }
-            //pendingInterest.insert(std::make_pair(interest.getName().get(3).toUri(),interest.getName()));
+        if((interest.getName().getPrefix(2).toString()+"/").equals(Config.prefix)){
+            String address = interest.getName().get(2).toEscapedString();
+            List<String> interests = new ArrayList<>();
+            interests.add("/pic/"+address+"/"+interest.getName().get(3).toEscapedString());
+            createFaceandSend(address,"/pic",interests);
+            pending.put(interest.getName().get(3).toEscapedString(),interest.getName());
 
 
-        }else if (interest.getName().get(0).equals("pic")) {
+        }else if (interest.getName().get(0).toEscapedString().equals("pic")) {
             try {
                 byte[] bytes;
                 Data data;
@@ -471,13 +522,10 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     data.setContent(blob);
 
                     G.Log(TAG, "Get file " + data.getContent().size());
-                    //FireBaseLogger.videoSent(this,new Date(),interest.getName().get(2).toEscapedString());
                     face.putData(data);
 
                 } catch (IOException e) {
                     G.Log(TAG, e.getMessage());
-                    //}catch(EncodingException e){
-                    //     G.Log(TAG,e.getMessage());
                 } finally {
                     fis.close();
                 }
@@ -493,8 +541,8 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
 
     public void onData(Interest interest, Data data){
 
-
-        if(interest.getName().getPrefix(2).equals(Config.prefix)) {
+        G.Log(TAG, "Data received " + data.getName().toString());
+        if((interest.getName().getPrefix(2)+"/").equals(Config.prefix)) {
             G.Log(TAG, "OCR message received  " + data.getContent().toString());
             try {
                 boolean fg = new ForegroundCheckTask().execute(this).get();
@@ -511,8 +559,24 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             Intent broadcast = new Intent(NEW_RESULT);
             sendBroadcast(broadcast);
             if (pendingInterests == 0) disconnect();
-        } else if (interest.getName().get(0).equals("pic")) {
+        } else if (interest.getName().get(0).toEscapedString().equals("pic")) {
+            G.Log(TAG, "Picture recevied " + data.getName().get(2).toEscapedString());
+            try {
+                OcrText ocr = new OcrText(this);
+                Blob b = data.getContent();
+                File f = new File(getFilesDir() + "/" + data.getName().get(2).toEscapedString());
+                FileOutputStream fos = new FileOutputStream(f);
+                fos.write(b.getImmutableArray());
+                String s = ocr.inspect(Uri.fromFile(f));
+                G.Log(TAG, "Text recevied " + s);
+                Data d = new Data();
 
+                d.setName(pending.get(data.getName().get(2).toEscapedString()));
+                d.setContent(new Blob(s.getBytes()));
+                mFace.putData(d);
+            }catch (IOException e){
+                e.printStackTrace();
+            }
         }
 
 
@@ -587,7 +651,7 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
     /* Creates the face towards the group owner and send interests to the NFD daemon for
       any pending video not received once connected to the WifiDirect network (WifiLink succeed)
      */
-    public void createFaceandSend(final String IP, final String uri) {
+        public void createFaceandSend(final String IP, final String uri, final List<String> interest) {
 
         new Thread(new Runnable() {
             @Override
@@ -596,30 +660,28 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     sleep(Config.createFaceWaitingTime);
                     MyNfdc nfdc = new MyNfdc();
                     retry++;
-                    G.Log(TAG,"Create face to "+IP+" for "+uri +" "+retry);
-                    faceId = nfdc.faceCreate("tcp://"+IP);
+                    G.Log(TAG,"Create face to "+IP);
+                    int faceId = nfdc.faceCreate("tcp://"+IP);
+                    nfdc.ribRegisterPrefix(new Name(uri), faceId, 0, true, false);
 
-                    G.Log(TAG,"Register prefix "+uri);
-                    nfdc.ribRegisterPrefix(new Name(Config.prefix), faceId, 0, true, false);
+                    //G.Log(TAG,"Register prefix "+uri);
                     nfdc.shutdown();
 
-                    KeyChain keyChain = buildTestKeyChain();
-                    Face mFace = new Face("localhost");
+                    mFace = new Face("localhost");
                     mFace.setCommandSigningInfo(keyChain, keyChain.getDefaultCertificateName());
 
-                    mFace.registerPrefix(new Name("/"+getLocalIPAddress()+"/result"), that, that);
-                    for(String cont : db.getPendingContent()) {
-                        G.Log(TAG,"send interest "+Config.prefix+cont);
-
-                        final Name requestName = new Name(Config.prefix+getLocalIPAddress()+"/"+cont);
-                        final Name localName = new Name("/pic/"+getLocalIPAddress()+"/"+cont);
-                        mFace.registerPrefix(new Name(localName), that, that);
+                    //mFace.registerPrefix(new Name("/"+getLocalIPAddress()+"/result"), that, that);
+                    for(String inter: interest)
+                    {
+                        G.Log(TAG,"send interest "+inter);
+                        final Name requestName = new Name(inter);
                         Interest interest = new Interest(requestName);
-                        sleep(Config.createFaceWaitingTime);
                         interest.setInterestLifetimeMilliseconds(timers.getInterestLifeTime());
                         mFace.expressInterest(interest, that, that);
                         pendingInterests++;
+
                     }
+
                     shouldStop=false;
                     retry=0;
                     while (!shouldStop) {
@@ -628,12 +690,9 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     mFace.shutdown();
                 } catch (Exception e) {
                     if(retry< Config.maxRetry) {
-                        createFaceandSend(IP, uri);
+                        createFaceandSend(IP, uri,interest);
                     }else {
-                        //mWifiLink.disconnect();
                         retry=0;
-                        //serviceStopUbiCDN();
-                        //serviceStartUbiCDN();
                     }
                     G.Log(TAG, "Error " + e);
                 }
@@ -679,10 +738,6 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
         return ipAddrStr;
     }
 
-
-    private String getOwnerAddress() {
-        return "192.168.49.1";
-    }
 
     private AdvertiseCallback createAdvertiseCallback() {
         return new AdvertiseCallback() {
@@ -753,18 +808,11 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             G.Log(TAG, "Unable to create GATT server");
             return;
         }
-		/*BluetoothGattService service = new BluetoothGattService(SERVICE_UUID.getUuid(),
-				BluetoothGattService.SERVICE_TYPE_PRIMARY);
-		mBluetoothGattServer.addService(service);*/
         setupServer();
-
-        // Initialize the local UI
-        //updateLocalUi(System.currentTimeMillis());
     }
 
     private void stopServer() {
         if (mBluetoothGattServer == null) return;
-        //mBluetoothGattServer.cancelConnection();
         mBluetoothGattServer.clearServices();
         mBluetoothGattServer.close();
     }
@@ -837,11 +885,16 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
             switch (message.what) {
                 case NdnOcrService.START_SERVICE:
                     G.Log(TAG,"Non source start service");
-                    //source=false;
                     serviceStart();
                     replyToClient(message, NdnOcrService.SERVICE_RUNNING);
                     break;
-
+                case NdnOcrService.RESTART_SERVICE:
+                    G.Log(TAG,"Non source start service");
+                    if(m_isServiceStarted) {
+                        serviceStop();
+                        serviceStart();
+                    }
+                    break;
                 case NdnOcrService.CHECK_SERVICE:
                     if(m_isServiceStarted)
                         replyToClient(message, NdnOcrService.SERVICE_RUNNING);
@@ -854,11 +907,6 @@ public class NdnOcrService extends Service implements OnInterestCallback, OnRegi
                     stopForeground(true);
                     stopSelf();
                     replyToClient(message, NdnOcrService.SERVICE_STOPPED);
-                    break;
-
-                case NdnOcrService.SERVICE_WIFI_CONNECTED:
-                    G.Log(TAG,"Wifi connection completed");
-                    // createFaceandSend();
                     break;
 
                 default:

@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-//import uk.ac.ucl.ndnocr.data.ContentAdvertisement;
-import uk.ac.ucl.ndnocr.data.NdnOcrService;
 import uk.ac.ucl.ndnocr.net.wifi.WifiDirectHotSpot;
 import uk.ac.ucl.ndnocr.utils.G;
 
@@ -27,8 +25,6 @@ import static uk.ac.ucl.ndnocr.net.ble.Constants.CHARACTERISTIC_ECHO_UUID;
 import static uk.ac.ucl.ndnocr.net.ble.Constants.CHARACTERISTIC_TIME_UUID;
 import static uk.ac.ucl.ndnocr.net.ble.Constants.CLIENT_CONFIGURATION_DESCRIPTOR_UUID;
 import static uk.ac.ucl.ndnocr.net.ble.Constants.SERVICE_UUID;
-
-//import com.bignerdranch.android.bluetoothtestbed.util.ByteUtils;
 
 public class GattServerCallback extends BluetoothGattServerCallback {
 

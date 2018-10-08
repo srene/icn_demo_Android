@@ -477,6 +477,8 @@ Forwarder::onOutgoingData(const Data& data, Face& outFace)
   // TODO traffic manager
 
   // send Data
+NFD_LOG_DEBUG("sending data to face=" << outFace.getId() << " data=" << data.getName());
+
   outFace.sendData(data);
   ++m_counters.nOutData;
 }

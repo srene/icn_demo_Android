@@ -12,9 +12,6 @@ import android.provider.MediaStore;
 
 import java.net.URISyntaxException;
 
-/**
- * Created by Aki on 1/7/2017.
- */
 
 public class PathUtil {
     /*

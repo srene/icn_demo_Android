@@ -3,13 +3,14 @@ package uk.ac.ucl.ndnocr;
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -17,13 +18,13 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.LinearLayout;
 
 import com.intel.jndn.management.types.FaceStatus;
 import com.intel.jndn.management.types.RibEntry;
 
-//import uk.ac.ucl.ndnocr.backend.VideoListService;
-import uk.ac.ucl.ndnocr.data.NdnOcrService;
-import uk.ac.ucl.ndnocr.ui.fragments.Camera2BasicFragment;
+import net.grandcentrix.tray.AppPreferences;
+
 import uk.ac.ucl.ndnocr.ui.fragments.FaceListFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.FaceStatusFragment;
 import uk.ac.ucl.ndnocr.ui.fragments.LogcatFragment;
@@ -37,14 +38,13 @@ import uk.ac.ucl.ndnocr.utils.G;
 
 import java.util.ArrayList;
 
-import static java.lang.Thread.sleep;
+import static uk.ac.ucl.ndnocr.ui.fragments.SettingsFragment.PREF_NDNOCR_SERVICE_SOURCE;
 
-//import static uk.ac.ucl.ndnocr.backend.NotificationService.NEW_VIDEO;
 
 /**
  * Created by srenevic on 24/08/17.
  *
- * Main activity of the ubicdn app
+ * Main activity of the ndnocr app
  *
  */
 
@@ -53,7 +53,6 @@ public class MainActivity extends AppCompatActivity
                LogcatFragment.Callbacks,
                FaceListFragment.Callbacks,
                RouteListFragment.Callbacks
-               //VideoListFragment.Callbacks*/
 {
 
     //////////////////////////////////////////////////////////////////////////////
@@ -61,6 +60,7 @@ public class MainActivity extends AppCompatActivity
     /** Reference to drawer fragment */
     private DrawerFragment m_drawerFragment;
     public static final boolean DEBUG = true;
+    private AppPreferences m_appPreferences;
 
 
     /** Title that is to be displayed in the ActionBar */
@@ -86,21 +86,17 @@ public class MainActivity extends AppCompatActivity
     @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    m_appPreferences = new AppPreferences(this);
+    boolean shouldBeSource = m_appPreferences.getBoolean(PREF_NDNOCR_SERVICE_SOURCE,false);
+    if(shouldBeSource) {
+        this.setTheme(R.style.BlackTheme);
+    }
     setContentView(R.layout.activity_main);
 
-
-   // Intent intent = new Intent(this, VideoListService.class);
-   // startService(intent);
-
-   // FirebaseMessaging.getInstance().subscribeToTopic("news");
-
-    Log.d("Main", "subscribed to topic news");
     FragmentManager fragmentManager = getSupportFragmentManager();
-    //mAuth = FirebaseAuth.getInstance();
-
-
-       Toolbar toolbar = findViewById(R.id.toolbar);
-       setSupportActionBar(toolbar);
+    Toolbar toolbar = findViewById(R.id.toolbar);
+    setSupportActionBar(toolbar);
+    if(shouldBeSource)getSupportActionBar().setTitle("NDN OCR Server");
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         if (this.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             final AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -169,43 +165,13 @@ public class MainActivity extends AppCompatActivity
     //signInAnonymously();
     G.Log(TAG,"onstart");
     try {
-        //Intent broadcast = new Intent(KebappService.DOWNLOAD_COMPLETED);
-        //sleep(400);
-        //sendBroadcast(broadcast);
+
         Fragment newFragment = new RecyclerViewFragment();
-        //fragment =
         FragmentManager fragmentManager = getSupportFragmentManager();
         fragmentManager.beginTransaction()
                 .replace(R.id.main_fragment_container, newFragment, "")
                 .commit();
     }catch (Exception e){};
-     /* if (getIntent().getExtras() != null) {
-          for (String key : getIntent().getExtras().keySet()) {
-              Object value = getIntent().getExtras().get(key);
-              Log.d(TAG, "Key: " + key + " Value: " + value);
-          }
-          String video = getIntent().getStringExtra("title");
-          String desc = getIntent().getStringExtra("desc");
-          String url = getIntent().getStringExtra("url");
-          String action = NEW_VIDEO;
-
-          Intent broadcast = new Intent(action)
-                  .putExtra("title", video)
-                  .putExtra("desc", desc)
-                  .putExtra("url", url);
-          sendBroadcast(broadcast);
-      }*/
-      //getFragmentManager().beginTransaction().detach(this).attach(this).commit();
-      //SomeFragment mSomeFragment = (SomeFragment) getFragmentManager().findFragmentByTag("sometag");
-     /* String fragmentTag = "org.schabi.newpipe.content-" + String.valueOf(itemCode);
-      FragmentManager fragmentManager = getSupportFragmentManager();
-      Fragment fragment = fragmentManager.findFragmentByTag(fragmentTag);
-      fragment = KioskFragment.getInstance(0,"Trending");
-      fragmentManager.beginTransaction()
-              .replace(R.id.main_fragment_container, fragment, fragmentTag)
-              .commit();*/
-      //Fragment frg = getSupportFragmentManager().findFragmentByTag("Your_Fragment_TAG");
-      //finalFragmentTransaction ft = getSupportFragmentManager().beginTransaction(); ft.detach(frg); ft.attach(frg); ft.commit();
 
   }
 
@@ -291,26 +257,18 @@ public class MainActivity extends AppCompatActivity
     if (fragment == null) {
       switch (itemCode) {
         case DRAWER_ITEM_GENERAL:
-        //  fragment = VideoListFragment.newInstance();
        try {
-           // fragment = KioskFragment.getInstance(0,"Trending");
-           //fragment = Camera2BasicFragment.newInstance();
+
            fragment = RecyclerViewFragment.newInstance();
 
       } catch (Exception e) {}
           break;
-        /*case DRAWER_ITEM_NFD:
-            fragment = ServiceFragment.newInstance();
-          break;*/
         case DRAWER_ITEM_FACES:
             fragment = FaceListFragment.newInstance();
           break;
         case DRAWER_ITEM_ROUTES:
             fragment = RouteListFragment.newInstance();
           break;
-        // TODO: Placeholders; Fill these in when their fragments have been created
-        //    case DRAWER_ITEM_STRATEGIES:
-        //      break;
         case DRAWER_ITEM_LOGCAT:
           fragment = LogcatFragment.newInstance();
           break;
@@ -331,33 +289,6 @@ public class MainActivity extends AppCompatActivity
       .commit();
   }
 
-    private void showProgressDialog(String caption) {
-
-        mProgressDialog = new ProgressDialog(this);
-
-        final String msg = caption;
-
-        new Thread()
-        {
-            public void run()
-            {
-                MainActivity.this.runOnUiThread(new Runnable()
-                {
-                    public void run()
-                    {
-                        if (mProgressDialog == null) {
-                            mProgressDialog.setIndeterminate(true);
-                        }
-
-                        mProgressDialog.setMessage(msg);
-                        mProgressDialog.show();
-                    }
-                });
-            }
-        }.start();
-
-
-    }
   @Override
   public void onDisplayLogcatSettings() {
     replaceContentFragmentWithBackstack(LogcatSettingsFragment.newInstance());
@@ -373,71 +304,5 @@ public class MainActivity extends AppCompatActivity
   {
     replaceContentFragmentWithBackstack(RouteInfoFragment.newInstance(ribEntry));
   }
-
-  /*@Override
-  public void onVideoItemSelected(String videoEntry)
-  {
-
-    replaceContentFragmentWithBackstack(VideoFragment.newInstance(videoEntry));
-  }*/
-
-
-    /*private void signInAnonymously() {
-    // Sign in anonymously. Authentication is required to read or write from Firebase Storage.
-    showProgressDialog(getString(R.string.progress_auth));
-    mAuth.signInAnonymously()
-            .addOnSuccessListener(this, new OnSuccessListener<AuthResult>() {
-              @Override
-              public void onSuccess(AuthResult authResult) {
-                Log.d(TAG, "signInAnonymously:SUCCESS");
-                hideProgressDialog();
-                updateUI(authResult.getUser());
-              }
-            })
-            .addOnFailureListener(this, new OnFailureListener() {
-              @Override
-              public void onFailure(@NonNull Exception exception) {
-                Log.e(TAG, "signInAnonymously:FAILURE", exception);
-                hideProgressDialog();
-                updateUI(null);
-              }
-            });
-  }*/
-
-
-
-   /* private void updateUI(FirebaseUser user) {
-        // Signed in or Signed out
-        if(user==null) {
-            String msg = "Unable to athenticate to notifications server";
-            Log.d(TAG, msg);
-            Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void hideProgressDialog() {
-        new Thread()
-        {
-            public void run()
-            {
-                MainActivity.this.runOnUiThread(new Runnable()
-                {
-                    public void run()
-                    {
-                        if (mProgressDialog != null && mProgressDialog.isShowing()) {
-                            mProgressDialog.dismiss();
-                        }
-                    }
-                });
-            }
-        }.start();
-
-    }
-    public static IntentFilter getIntentFilter() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(NEW_VIDEO);
-
-        return filter;
-    }*/
 
 }

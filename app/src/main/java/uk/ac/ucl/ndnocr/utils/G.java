@@ -86,14 +86,7 @@ public class G {
     Log(TAG, message);
   }
 
-  /**
-   * Gets the tag in which logs are posted with.
-   *
-   * @return TAG that is used by this log class.
-   */
-  public static String getLogTag() {
-    return TAG;
-  }
+
 
   private static boolean isBt(String TAG){
     return btTags.contains(TAG);

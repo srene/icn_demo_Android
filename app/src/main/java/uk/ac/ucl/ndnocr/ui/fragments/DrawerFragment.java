@@ -1,22 +1,3 @@
-/* -*- Mode:jde; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/**
- * Copyright (c) 2015 Regents of the University of California
- *
- * This file is part of NFD (Named Data Networking Forwarding Daemon) Android.
- * See AUTHORS.md for complete list of NFD Android authors and contributors.
- *
- * NFD Android is free software: you can redistribute it and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software Foundation,
- * either version 3 of the License, or (at your option) any later version.
- *
- * NFD Android is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
- * PURPOSE.  See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * NFD Android, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package uk.ac.ucl.ndnocr.ui.fragments;
 
 import android.app.Activity;
@@ -28,6 +9,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -56,13 +38,16 @@ import android.widget.ListView;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import net.grandcentrix.tray.AppPreferences;
+
 import uk.ac.ucl.ndnocr.R;
 import uk.ac.ucl.ndnocr.data.NdnOcrService;
 import uk.ac.ucl.ndnocr.utils.G;
 
 import java.util.ArrayList;
 
-//import android.support.v7.app.ActionBarActivity;
+import static uk.ac.ucl.ndnocr.ui.fragments.SettingsFragment.PREF_NDNOCR_SERVICE_SOURCE;
+
 
 /**
  * DrawerFragment that provides navigation for MainActivity.
@@ -122,8 +107,10 @@ public class DrawerFragment extends Fragment {
     View drawer = inflater.inflate(
             R.layout.activity_main_drawer_listview, container, false);
     m_drawerListView = drawer.findViewById(R.id.drawer_listview);
-
-   // m_drawerListView = (ListView)inflater.inflate(
+    AppPreferences m_appPreferences =  new AppPreferences(getContext());
+    boolean shouldBeSource = m_appPreferences.getBoolean(PREF_NDNOCR_SERVICE_SOURCE,false);
+    if(shouldBeSource)    drawer.setBackgroundColor(Color.parseColor("#000000"));
+    // m_drawerListView = (ListView)inflater.inflate(
     //  R.layout.activity_main_drawer_listview, container, false);
 
     m_drawerListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -135,7 +122,6 @@ public class DrawerFragment extends Fragment {
     });
     m_drawerListView.setAdapter(new DrawerListAdapter(getContext(),m_drawerItems));
     m_drawerListView.setItemChecked(m_drawerSelectedPosition, true);
-
     m_serviceStartStopSwitch = drawer.findViewById(R.id.serviceSwitch);
 
     m_serviceStartStopSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -145,11 +131,11 @@ public class DrawerFragment extends Fragment {
 
               if (isOn) {
                  // isSource.setEnabled(false);
-                 startKbappService();
+                 startService();
               }
               else {
                 //  isSource.setEnabled(true);
-                stopKbappService();
+                stopService();
               }
           }
       });
@@ -455,7 +441,7 @@ public class DrawerFragment extends Fragment {
   }
 
   /**
-   * Method that binds the current activity to the UbiCDN Service.
+   * Method that binds the current activity to the NDNOCRService Service.
    */
   private void
   bindService() {
@@ -468,7 +454,7 @@ public class DrawerFragment extends Fragment {
   }
 
   /**
-   * Method that unbinds the current activity from the UbiCDN Service.
+   * Method that unbinds the current activity from the NDNOCRService Service.
    */
   private void
   unbindService() {
@@ -484,7 +470,7 @@ public class DrawerFragment extends Fragment {
   }
 
   /**
-   * Client ServiceConnection to UbiCDN Service.
+   * Client ServiceConnection to NDNOCRService Service.
    */
   public final ServiceConnection m_ServiceConnection = new ServiceConnection() {
     @Override
@@ -518,7 +504,7 @@ public class DrawerFragment extends Fragment {
   };
 
   public void
-  startKbappService() {
+  startService() {
     assert m_isServiceConnected;
 
     m_serviceStartStopSwitch.setText(R.string.starting_service);
@@ -528,7 +514,7 @@ public class DrawerFragment extends Fragment {
   }
 
   public void
-  stopKbappService() {
+  stopService() {
     assert m_isServiceConnected;
     m_serviceStartStopSwitch.setText(R.string.stopping_service);
     sendServiceMessage(NdnOcrService.STOP_SERVICE);
@@ -578,7 +564,7 @@ public class DrawerFragment extends Fragment {
       switch (msg.what) {
         case NdnOcrService.SERVICE_RUNNING:
           setServiceRunning();
-          G.Log("ClientHandler: UbiCDN is Running.");
+          G.Log("ClientHandler: NDNOCR is Running.");
 
           //m_handler.postDelayed(m_statusUpdateRunnable, 500);
           break;
@@ -587,7 +573,7 @@ public class DrawerFragment extends Fragment {
           setServiceStopped();
           Intent myService = new Intent(getActivity(),NdnOcrService.class);
           getActivity().stopService(myService);
-          G.Log("ClientHandler: UbiCDN is Stopped.");
+          G.Log("ClientHandler: NDNOCR is Stopped.");
           break;
 
         default:
@@ -618,9 +604,6 @@ public class DrawerFragment extends Fragment {
 
   /** Callback to parent activity */
   private DrawerCallbacks m_callbacks;
-
-  /** DrawerToggle for interacting with drawer and action bar app icon */
-  //private ActionBarDrawerToggle m_drawerToggle;
 
   /** Reference to DrawerLayout fragment in host activity */
   private DrawerLayout m_drawerLayout;

@@ -35,7 +35,7 @@ public class App extends Application {
         ImageLoader.getInstance().init(config);
 
         //SharedPreferences m_sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        //setSource(m_sharedPreferences.getBoolean(ServiceFragment.PREF_UBICDN_SERVICE_SOURCE,false));
+        //setSource(m_sharedPreferences.getBoolean(ServiceFragment.PREF_NDNOCR_SERVICE_SOURCE,false));
         try{
             m_name = new String(Settings.Secure.getString(getContentResolver(), "bluetooth_name").getBytes("UTF-8"));
         }catch (Exception e){

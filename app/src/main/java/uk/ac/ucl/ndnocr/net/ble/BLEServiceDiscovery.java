@@ -1,19 +1,3 @@
-/*
- * Copyright (c) 2016 Vladimir L. Shabanov <virlof@gmail.com>
- *
- * Licensed under the Underdark License, Version 1.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://underdark.io/LICENSE.txt
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package uk.ac.ucl.ndnocr.net.ble;
 
 import android.bluetooth.BluetoothAdapter;
@@ -39,18 +23,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
-//import uk.ac.ucl.ndnocr.data.ContentAdvertisement;
 import uk.ac.ucl.ndnocr.data.NdnOcrService;
 import uk.ac.ucl.ndnocr.utils.G;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
 import static uk.ac.ucl.ndnocr.net.ble.Constants.SERVICE_UUID;
 
-//import uk.ac.ucl.ndnocr.data.UbiCDNService;
-
-//import uk.ac.ucl.ndnocr.net.bluetooth.pairing.BtPairer;
 
 public class BLEServiceDiscovery {
 
@@ -90,16 +69,9 @@ public class BLEServiceDiscovery {
 	Set<BluetoothDevice> results;
 
 	private boolean started=false;
-	//public final static UUID UUID_HEART_RATE_MEASUREMENT[] = {UUID.fromString("00001805-0000-1000-8000-00805f9b34fb")};
-	//		UUID.fromString(SampleGattAttributes.HEART_RATE_MEASUREMENT);
-	//public static UUID NDN_OCR_SERVICE = UUID.fromString("00001805-0000-1000-8000-00805f9b34fb");
-	//public final static UUID SERVICES[] = {NDN_OCR_SERVICE};
-
 	private NdnOcrService service;
 
 	private BluetoothLeScanner mLEScanner;
-	//boolean isWorking = false;
-	//boolean jobCancelled = false;
 	boolean mInitialized = false;
 	int serverstate = BluetoothProfile.STATE_DISCONNECTED;
 
@@ -204,14 +176,11 @@ public class BLEServiceDiscovery {
 				mScanning = false;
 				mLEScanner.stopScan(mScanCallback);
 				if(started&&mConnectionState==STATE_DISCONNECTED)tryConnection();
-                //mLEScanner.stopScan(mScanCallback);
                 mLEScanner.flushPendingScanResults(mScanCallback);
 				try{ Thread.sleep(RETRY);}catch (Exception e){}
-				//if(mConnectionState==STATE_DISCONNECTED)scanLeDevice();
-				//if(started)scanLeDevice();
+
 				if(started){
-					//stop();
-					//start(ca);
+
 					start();
 				}
 			}
@@ -247,11 +216,8 @@ public class BLEServiceDiscovery {
 	};
 
 	public void tryConnection(){
-		//String address = android.provider.Settings.Secure.getString(context.getContentResolver(), "bluetooth_address");
 		for(BluetoothDevice res: results){
-			//G.Log(TAG,"Tryconnection "+results.size()+" "+address+" "+res.getAddress()+" "+address.hashCode()+" "+res.getAddress().hashCode());
 			if(mBluetoothAdapter.getAddress().hashCode()>res.getAddress().hashCode()){
-				//G.Log("Connect to "+res.getName()+" "+res.getAddress());
 				if(connect(res.getAddress())){
 					results.remove(res);
 					break;
@@ -325,23 +291,15 @@ public class BLEServiceDiscovery {
 		public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
 			String intentAction;
 			if (newState == BluetoothProfile.STATE_CONNECTED&&mConnectionState!=BluetoothProfile.STATE_CONNECTED) {
-				//gatt.requestMtu(512);
-				intentAction = ACTION_GATT_CONNECTED;
 				mConnectionState = STATE_CONNECTED;
-				//broadcastUpdate(intentAction);
 				G.Log(TAG, "Connected to GATT server: "+gatt.getDevice().getAddress());
 				// Attempts to discover services after successful connection.
-				//G.Log(TAG, "Attempting to start service discovery:" );
 				mBluetoothGatt.discoverServices();
 
 			} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
 				intentAction = ACTION_GATT_DISCONNECTED;
 				mConnectionState = STATE_DISCONNECTED;
 				G.Log(TAG, "Disconnected from GATT server.");
-				//scanLeDevice();
-				//broadcastUpdate(intentAction);
-                //stop();
-                //start(ca);
 				if(started)tryConnection();
 			}
 		}
@@ -377,7 +335,6 @@ public class BLEServiceDiscovery {
 			super.onMtuChanged(gatt, mtu, status);
 
 			if (status == BluetoothGatt.GATT_SUCCESS) {
-				//G.Log(TAG,"Supported mtu "+mtu);
 				if(mInitialized)sendMessage();
 			}
 		}
@@ -386,11 +343,8 @@ public class BLEServiceDiscovery {
 		public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
 			if (status == BluetoothGatt.GATT_SUCCESS) {
 				G.Log(TAG,"Characteristic onDescriptorWrite success");
-				//mClientActionListener.log("Descriptor written successfully: " + descriptor.getUuid().toString());
-				// mClientActionListener.initializeTime();
 			} else {
 				G.Log(TAG,"Characteristic onDescriptorWrite not success");
-				// mClientActionListener.logError("Descriptor write unsuccessful: " + descriptor.getUuid().toString());
 			}
 		}
 
@@ -399,20 +353,16 @@ public class BLEServiceDiscovery {
 										 BluetoothGattCharacteristic characteristic,
 										 int status) {
 			G.Log(TAG, "onCharacteristicRead received: " + status);
-			if (status == BluetoothGatt.GATT_SUCCESS) {
-				//broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
-			}
+
 		}
 
 		@Override
 		public void onCharacteristicChanged(BluetoothGatt gatt,
 											BluetoothGattCharacteristic characteristic) {
 			G.Log(TAG, "onCharacteristicChanged received: "+characteristic.getValue());
-			//if(Arrays.equals(new byte[]{0x01},characteristic.getValue()))
                 sHandler.removeCallbacksAndMessages(null);
 				readCharacteristic(characteristic);
 
-			//broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
 		}
 	};
 
@@ -420,59 +370,31 @@ public class BLEServiceDiscovery {
 	private void enableCharacteristicNotification(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
 		boolean characteristicWriteSuccess = gatt.setCharacteristicNotification(characteristic, true);
 		if (characteristicWriteSuccess) {
-			//G.Log(TAG,"Characteristic notification set successfully for " + characteristic.getUuid().toString());
 			if (BluetoothUtils.isEchoCharacteristic(characteristic)) {
 				mInitialized = true;
 				gatt.requestMtu(512);
-			} /*else if (BluetoothUtils.isTimeCharacteristic(characteristic)) {
-				enableCharacteristicConfigurationDescriptor(gatt, characteristic);
-			}*/
+			}
 		} else {
 			G.Log(TAG,"Characteristic notification set failure for " + characteristic.getUuid().toString());
 		}
 	}
 
 
-	// Sometimes the Characteristic does not have permissions, and instead its Descriptor holds them
-	// See https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
-	/*private void enableCharacteristicConfigurationDescriptor(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-
-		List<BluetoothGattDescriptor> descriptorList = characteristic.getDescriptors();
-		BluetoothGattDescriptor descriptor = BluetoothUtils.findClientConfigurationDescriptor(descriptorList);
-		if (descriptor == null) {
-			G.Log(TAG,"Unable to find Characteristic Configuration Descriptor");
-			return;
-		}
-
-		descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-		boolean descriptorWriteInitiated = gatt.writeDescriptor(descriptor);
-		if (descriptorWriteInitiated) {
-			G.Log(TAG,"Characteristic Configuration Descriptor write initiated: " + descriptor.getUuid().toString());
-		} else {
-			G.Log(TAG,"Characteristic Configuration Descriptor write failed to initiate: " + descriptor.getUuid().toString());
-		}
-	}*/
-
 	private void readCharacteristic(BluetoothGattCharacteristic characteristic) {
 
         byte[] messageBytes = characteristic.getValue();
         String message = StringUtils.stringFromBytes(messageBytes);
-        //G.Log(TAG, "Read: " + StringUtils.byteArrayInHexFormat(messageBytes));
 
         if (message == null) {
             G.Log(TAG, "Unable to convert bytes to string");
             return;
         }
-        //G.Log(TAG, "Received message: " + message);
 
         if (Arrays.equals(new byte[]{0x00}, messageBytes)){
             disconnect();
-            //listener.linkNetworkSameDiscovered(device.getAddress());
         }else
 		    service.linkNetworkDiscovered(message);
-        //stop();
-		//stop();
-		//close();
+
 	}
 
 	private void sendMessage() {
@@ -488,8 +410,6 @@ public class BLEServiceDiscovery {
 			return;
 		}
 
-
-		//byte[] messageBytes = ca.getFilterBytes();
 		byte[] messageBytes = new byte[]{0x00};
 
 		G.Log(TAG,"Sending message: " + new String(messageBytes) + " " + messageBytes.length);
@@ -507,17 +427,10 @@ public class BLEServiceDiscovery {
         sHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                //start(ca);
 				start();
-                //if(started)scanLeDevice();
             }
         }, RETRY*3);
 
-		/*if (success) {
-			G.Log(TAG,"Wrote: " + StringUtils.byteArrayInHexFormat(messageBytes));
-		} else {
-			G.Log(TAG,"Failed to write data");
-		}*/
 		if(!success)G.Log(TAG,"Failed to write data");
 	}
 

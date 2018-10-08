@@ -1,8 +1,5 @@
 package uk.ac.ucl.ndnocr.ui.splash;
 
-/**
- * Created by srenevic on 08/09/16.
- */
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;

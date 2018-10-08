@@ -69,7 +69,7 @@ public:
       "  Forwarder NONE\n"
       "  ContentStore NONE\n"
       "  DeadNonceList NONE\n"
- /*     "  default_level DEBUG\n"
+      /*"  default_level DEBUG\n"
       "  NameTree DEBUG\n"
       "  BestRouteStrategy2 DEBUG\n"
       "  InternalFace DEBUG\n"
