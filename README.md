@@ -78,7 +78,7 @@ Worker devices, that offer its computation, create a WiFi Direct network using t
 Once the users leave the network the source nodes shut down the connection and only create the WiFi Direct network when it discovers other users willing to connect in the vicinity.
 
 ### Users' discovery
-Android implements its own service discovery for WiFi Direct connections based on [DNS] (https://developer.android.com/training/connect-devices-wirelessly/nsd-wifi-direct), but it presents several issues, such as instability or unreliable results. 
+Android implements its own service discovery for WiFi Direct connections based on [DNS](https://developer.android.com/training/connect-devices-wirelessly/nsd-wifi-direct), but it presents several issues, such as instability or unreliable results. 
 To solve this issue, we implemented another service discovery module, based on the so-well known and stable [Bluetooth Low energy (BLE)](https://developer.android.com/guide/topics/connectivity/bluetooth-le) beacons technology in order to 
 exchange information related to the device's applications prior to the WiFi Direct connection.
 Users can hear for these beacons (in a very low energy consumption mode) to discover other users with the same application and happy to offer computation offloading.
