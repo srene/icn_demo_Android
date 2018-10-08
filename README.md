@@ -45,7 +45,7 @@ For more details about the crew tool, refer to README-dev.md.
     git clone https://github.com/srene/icn_demo_Android
     echo sdk.dir=`pwd`/android-sdk-linux > icn_demo_Android/local.properties
     echo ndk.dir=`pwd`/android-sdk-linux/ndk-bundle >> icn_demo_Android/local.properties
-    cd NFD-android
+    cd icn_demo_Android
 
     # Build in release mode (you will need to have proper signing keys configured, see README-dev.md)
     ./gradlew assembleRelease
