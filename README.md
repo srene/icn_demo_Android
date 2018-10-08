@@ -6,39 +6,43 @@ This version of the Android app supports Device-to-Device (D2D) communications a
 
 ## Prerequisites
 
+´´´
 To compile code, the following is necessary
 
 - Recent version of [Android SDK](http://developer.android.com/sdk/index.html)
 
 Example script for Ubuntu 16.04 to get all dependencies, download SDK and NDK:
+Example script for Ubuntu 14.04 to get all dependencies, download SDK and NDK:
 
-    sudo apt -q update
-    sudo apt -qy upgrade
-    sudo apt-get install -y build-essential git openjdk-8-jdk unzip ruby ruby-rugged
+    CRYSTAX_NDK_VERSION=10.3.1
+    SDK_VERSION=24.4.1
+    OPENSSL_VERSION=1.0.2h
+
+    BUILD_TOOLS_VERSION=23.0.2
+    COMPILE_SDK_VERSION=23
+
+    sudo apt-get install -y build-essential git openjdk-7-jdk unzip
     sudo apt-get install -y lib32stdc++6 lib32z1 lib32z1-dev
 
-    mkdir android-sdk-linux
-    cd android-sdk-linux
-    wget https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip
-    unzip sdk-tools-linux-3859397.zip
-    rm sdk-tools-linux-3859397.zip
+    wget https://www.crystax.net/download/crystax-ndk-$CRYSTAX_NDK_VERSION-linux-x86_64.tar.xz
+    tar xf crystax-ndk-$CRYSTAX_NDK_VERSION-linux-x86_64.tar.xz
+    rm crystax-ndk-$CRYSTAX_NDK_VERSION-linux-x86_64.tar.xz
 
-    export ANDROID_HOME=`pwd`
-    export PATH=${PATH}:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools
+    wget http://dl.google.com/android/android-sdk_r$SDK_VERSION-linux.tgz
+    tar zxf android-sdk_r$SDK_VERSION-linux.tgz
+    rm android-sdk_r$SDK_VERSION-linux.tgz
 
-    echo "y" | sdkmanager "platform-tools"
-    sdkmanager "platforms;android-28" "ndk-bundle"
+    export ANDROID_HOME=`pwd`/android-sdk-linux
+    export PATH=${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
 
-    cd ndk-bundle
-    git clone https://github.com/named-data-mobile/android-crew-staging crew.dir
+    echo "y" | android update sdk --filter platform-tools,build-tools-$BUILD_TOOLS_VERSION,android-$COMPILE_SDK_VERSION,extra-android-support,extra-android-m2repository,extra-google-m2repository --no-ui --all --force
+    echo "y" | android update sdk --filter "android-19" --no-ui --all --force
 
-    CREW_OWNER=named-data-mobile crew.dir/crew install target/sqlite target/openssl target/boost
-    CREW_OWNER=named-data-mobile crew.dir/crew install target/ndn_cxx target/nfd
+    git clone https://github.com/crystax/android-vendor-openssl.git
+    cd crystax-ndk-$CRYSTAX_NDK_VERSION
+    ./build/tools/build-target-openssl.sh ../android-vendor-openssl/
+    cp sources/openssl/1.0.1p/Android.mk -o sources/openssl/$OPENSSL_VERSION/Android.mk
 
-    cd ..
-
-The above `crew` scripts will install pre-compiled versions of sqlite, openssl, and boost libraries.
-For more details about the crew tool, refer to README-dev.md.
 
 ## Building
 
